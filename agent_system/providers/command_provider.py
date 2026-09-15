@@ -13,10 +13,11 @@ from .base import ExecutionResult, ModelProvider, ProviderAvailability, Provider
 class CommandProvider(ModelProvider):
     def __init__(self, name: str, provider_id: str, tier: ProviderTier, config: dict[str, Any] | None = None):
         super().__init__(name, provider_id, tier, config)
-        self.command_template = config.get("command") if config else []
-        self.timeout_seconds = config.get("timeout_seconds", 300) if config else 300
-        self.workdir = config.get("workdir") if config else None
-        self.env = config.get("env") if config else {}
+        cfg = config or {}
+        self.command_template = cfg.get("command") or []
+        self.timeout_seconds = cfg.get("timeout_seconds", 300)
+        self.workdir = cfg.get("workdir")
+        self.env = cfg.get("env") or {}
 
     def availability(self) -> ProviderAvailability:
         if not self.command_template:
@@ -52,7 +53,19 @@ class CommandProvider(ModelProvider):
             return ExecutionResult(False, "", f"Command execution failed: {exc}", [])
         finally:
             prompt_file.unlink(missing_ok=True)
-        return ExecutionResult(result.returncode == 0, result.stdout, result.stderr if result.returncode != 0 else None, self._detect_modified_files(worktree), {"returncode": result.returncode, "command": cmd})
+        metadata = {
+            "returncode": result.returncode,
+            "executable": Path(cmd[0]).name,
+            "argv_count": len(cmd),
+            "command_redacted": True,
+        }
+        return ExecutionResult(
+            result.returncode == 0,
+            result.stdout,
+            result.stderr if result.returncode != 0 else None,
+            self._detect_modified_files(worktree),
+            metadata,
+        )
 
     def _build_prompt(self, task: dict[str, Any], context: dict[str, Any]) -> str:
         parts = [f"Task: {task.get('id','unknown')}", f"Goal: {task.get('goal','')}", f"Risk: {task.get('risk','medium')}", "", f"Allowed scope: {task.get('allowed_scope', [])}", f"Forbidden scope: {task.get('forbidden_scope', [])}", "", "Repository context:"]
