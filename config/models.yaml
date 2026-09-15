@@ -25,6 +25,32 @@ providers:
       - "No command provider configured"
     timeout_seconds: 60
 
+  ollama-free:
+    type: ollama
+    name: "Ollama Local Free Implementer"
+    provider_id: "ollama-free"
+    tier: free
+    enabled: true
+    base_url: "http://127.0.0.1:11434"
+    model_env: "OLLAMA_MODEL"
+    role: "implementer"
+    timeout_seconds: 300
+    context_limit: 32768
+    trust_status: "EXPERIMENTAL"
+
+  ollama-reviewer:
+    type: ollama
+    name: "Ollama Local Free Reviewer"
+    provider_id: "ollama-reviewer"
+    tier: free
+    enabled: true
+    base_url: "http://127.0.0.1:11434"
+    model_env: "OLLAMA_REVIEW_MODEL"
+    role: "reviewer"
+    timeout_seconds: 180
+    context_limit: 32768
+    trust_status: "EXPERIMENTAL"
+
   codex:
     type: command
     name: "Codex CLI"
