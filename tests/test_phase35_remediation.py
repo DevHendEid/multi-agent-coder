@@ -4,6 +4,7 @@ import subprocess
 from agent_system.cli import build_reviewer
 from agent_system.context import ContextBuilder
 from agent_system.models import TaskStatus
+from agent_system.multi_reviewer import IndependentReviewPanel
 from agent_system.orchestrator import Orchestrator
 from agent_system.providers import ProviderAvailability, ProviderRegistry
 from agent_system.providers.base import ExecutionResult, ModelProvider, ProviderCapabilities, ProviderTier
@@ -29,7 +30,9 @@ class StaticReviewerProvider(ModelProvider):
 def test_provider_reviewer_wired():
     registry = ProviderRegistry(); provider = StaticReviewerProvider(); registry.register(provider)
     reviewer = build_reviewer(registry, Path("."))
-    assert isinstance(reviewer, ProviderReviewer)
+    assert isinstance(reviewer, IndependentReviewPanel)
+    assert len(reviewer.premium_reviewers) == 1
+    assert isinstance(reviewer.premium_reviewers[0], ProviderReviewer)
 
 
 def test_ai_pass_cannot_override_failed_verification(tmp_path):

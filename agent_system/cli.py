@@ -15,6 +15,7 @@ from .context import ContextBuilder
 from .implementer import Implementer
 from .verifier import Verifier
 from .reviewer import Reviewer, ProviderReviewer
+from .multi_reviewer import IndependentReviewPanel
 from .repair import RepairLoop
 from .artifacts import RunArtifacts
 from .models import TaskStatus
@@ -25,12 +26,30 @@ def find_root() -> Path:
 
 
 def build_reviewer(registry: ProviderRegistry, worktree: Path) -> Reviewer:
-    """Prefer an available free/local reviewer, then Codex, then deterministic review."""
-    for provider_id in ("ollama-reviewer", "codex-reviewer"):
-        provider = registry.get(provider_id)
-        if provider is not None and provider.availability() == ProviderAvailability.AVAILABLE:
-            return ProviderReviewer(provider, worktree)
-    return Reviewer(reviewer_id="deterministic-reviewer")
+    """Build a free-first independent review panel.
+
+    Every available read-only free/local reviewer participates. Premium
+    reviewers are registered with the panel but are only invoked by the panel
+    for high/critical risk tasks. Deterministic review is always present.
+    """
+    free_reviewers: list[Reviewer] = []
+    premium_reviewers: list[Reviewer] = []
+    for provider in registry.list_all():
+        if provider.availability() != ProviderAvailability.AVAILABLE:
+            continue
+        caps = provider.capabilities()
+        if caps.supports_file_editing:
+            continue
+        reviewer = ProviderReviewer(provider, worktree)
+        if provider.tier.value == "premium":
+            premium_reviewers.append(reviewer)
+        else:
+            free_reviewers.append(reviewer)
+    return IndependentReviewPanel(
+        free_reviewers=free_reviewers,
+        premium_reviewers=premium_reviewers,
+        deterministic_reviewer=Reviewer(reviewer_id="deterministic-reviewer"),
+    )
 
 
 def cmd_init_project(args):
