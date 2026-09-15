@@ -1,0 +1,6 @@
+system:
+  auto_merge: false
+  max_free_attempts: 2
+  max_total_repair_rounds: 3
+  worktree_root: .agent-worktrees
+  database: .agent-system/state.db

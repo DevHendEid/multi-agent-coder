@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multi-agent-coder"
+version = "0.1.1"
+description = "Generic foundation for a near-autonomous multi-agent coding orchestrator"
+requires-python = ">=3.11"
+dependencies = ["PyYAML>=6.0"]
+
+[project.scripts]
+agent = "agent_system.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agent_system*"]
+exclude = ["tests*", "runs*", "config*", "projects*", "tasks*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = "-q"

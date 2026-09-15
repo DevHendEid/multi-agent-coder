@@ -1,0 +1,16 @@
+name: example-project
+repository:
+  path: /absolute/path/to/repository
+commands:
+  analyze: ""
+  test: ""
+  build: ""
+protected_paths:
+  - .env
+  - secrets/
+risk_rules:
+  docs: low
+  tests: low
+  refactor: medium
+  architecture: high
+  security: critical
