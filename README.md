@@ -1,27 +1,32 @@
 # Multi-Agent Coder
 
-Generic multi-agent coding orchestration foundation with isolated Git worktrees, provider routing, deterministic verification, structured review, bounded repair, and resumable task state.
+Generic multi-agent coding orchestrator with isolated Git worktrees, free-first provider routing, deterministic verification, independent review, bounded repair, parallel execution, DAG dependencies, model benchmarking, guarded PR publication, and production hardening.
 
-## Current status
+## Implemented architecture
 
-Implemented and tested:
 - Project adapters and task contracts
-- SQLite task state and event history
-- Isolated Git worktrees per task
-- Provider registry and risk-based routing
-- Mock and command providers
-- Codex implementation provider
-- Codex read-only reviewer provider adapter
-- Context builder with size limits
-- Scope/path containment checks
-- Deterministic verification gates
-- Provider-backed structured review with deterministic override rules
-- Bounded repair loop with end-to-end repair/re-verify coverage
-- Resume support and run artifacts
+- Persistent SQLite task state and event history
+- Isolated Git worktree per task
+- Free-first provider routing with fallback/escalation
+- Local Ollama implementer and read-only reviewer support
+- Codex implementer/reviewer adapters
+- Deterministic scope, diff, test, lint, build, and integration gates when configured
+- Independent review panel with deterministic failure dominance
+- Bounded repair and full re-verification
+- Parallel execution across distinct task worktrees
+- Persistent DAG/task dependencies with cycle prevention
+- Model/version-specific benchmark registry and admission status
+- Explicit guarded GitHub PR publication after persisted verification/review gates
+- Per-task runtime leases to prevent duplicate concurrent execution
+- Conservative interrupted-task recovery tooling
+- Production diagnostics and SQLite integrity checks
+- CI on Python 3.11 and 3.12 with read-only permissions and SHA-pinned actions
 
-Current limitation:
-- A real **free** provider has not yet been validated on the user's machine. Codex integration exists, but it is a premium provider and can be quota-limited.
-- No automatic merge, push, deploy, SAFA integration, parallel agent DAG, or production release automation is enabled.
+## Safety boundaries
+
+Model output is never proof of correctness. Deterministic verification remains authoritative. A reviewer cannot vote away a failed deterministic gate. Critical/human-gated work remains subject to explicit human review. The system does **not** automatically merge or deploy.
+
+PR publication is an explicit user action through `agent-pr`; it commits and pushes the already-verified task branch, then creates or reuses a GitHub pull request. Human-gated tasks may only be published as draft PRs.
 
 ## Quick start
 
@@ -37,14 +42,62 @@ agent run TASK-0001
 agent status TASK-0001
 ```
 
-## Safety model
+For local Ollama routing, set exact installed model names before running:
 
-The orchestrator never treats model output as proof of correctness. Deterministic gates remain authoritative. AI providers operate against task worktrees, and the system does not auto-merge or auto-push.
+```bash
+export OLLAMA_MODEL=qwen2.5-coder:7b
+export OLLAMA_REVIEW_MODEL=qwen2.5-coder:7b
+agent models
+```
+
+## Parallel work and dependencies
+
+```bash
+agent run-many TASK-0001 TASK-0002 --workers 2
+agent task --project demo --depends-on TASK-0001 "Add follow-up behavior"
+agent depends TASK-0003 --on TASK-0002
+agent dag
+agent run-ready --workers 2
+```
+
+## Model benchmark registry
+
+```bash
+agent benchmark ollama-free --repeat 2
+agent benchmark ollama-reviewer --repeat 2
+agent benchmarks
+agent models
+```
+
+Benchmark admission is tied to the exact provider/model identity. A new model version does not inherit an older model's benchmark status.
+
+## Pull request publication
+
+Requires GitHub CLI (`gh`) to be installed and authenticated for the target repository.
+
+```bash
+agent-pr TASK-0001                 # draft PR by default
+agent-pr TASK-0001 --ready         # non-draft only when no human gate is active
+```
+
+No merge or deployment occurs automatically.
+
+## Production diagnostics and recovery
+
+```bash
+agent-doctor
+agent-doctor --json
+agent-recover TASK-0001            # dry-run recovery plan
+agent-recover TASK-0001 --apply    # apply only the conservative state transition
+```
+
+Interrupted-task recovery never edits or discards worktree changes. Partial unverified changes without a persisted implementation artifact are marked for manual inspection rather than assumed correct.
 
 ## Tests
 
 ```bash
 python -m pytest -q
+python -m compileall -q agent_system
 ```
 
-Current local result in this snapshot: **25 passed**.
+GitHub Actions runs the suite on Python 3.11 and 3.12, performs CLI smoke tests, package consistency checks, compile checks, a `shell=True` guard, runtime-state tracking guard, and SHA-pin guard for actions.
