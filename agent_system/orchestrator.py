@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from .contracts import write_contract
+from .dag import DagScheduler
 from .models import TaskContract, TaskStatus
 from .project import ProjectConfig
 from .risk import classify_risk
@@ -18,8 +19,13 @@ class Orchestrator:
         project_path = self.root / "projects" / f"{project_name}.yaml"
         return ProjectConfig.load(project_path)
 
-    def create_task(self, project_file: str | Path, goal: str) -> dict:
+    def create_task(self, project_file: str | Path, goal: str, dependencies: list[str] | None = None) -> dict:
         project = ProjectConfig.load(project_file)
+        dependencies = dependencies or []
+        for dep in dependencies:
+            if not self.state.get_task(dep):
+                raise ValueError(f"Unknown dependency task: {dep}")
+
         task_id = self.state.next_task_id()
         risk = classify_risk(goal)
 
@@ -45,13 +51,15 @@ class Orchestrator:
             max_free_attempts=contract.max_free_attempts,
             max_total_repair_rounds=contract.max_free_attempts + 1,
         )
+        DagScheduler(self.state).add_dependencies(task_id, dependencies)
         contract_path = write_contract(contract, self.root / "tasks")
 
         manager = WorktreeManager(project.repo_path)
         branch, worktree = manager.create(task_id)
+        status = TaskStatus.WAITING_DEPENDENCY.value if dependencies else TaskStatus.PLANNED.value
         self.state.update_task(
             task_id,
-            status=TaskStatus.PLANNED.value,
+            status=status,
             branch=branch,
             worktree=str(worktree),
         )
@@ -59,7 +67,7 @@ class Orchestrator:
         run_dir = self.root / "runs" / task_id
         run_dir.mkdir(parents=True, exist_ok=True)
         (run_dir / "README.txt").write_text(
-            f"Task {task_id}\nGoal: {goal}\nRisk: {risk}\nBranch: {branch}\nWorktree: {worktree}\n"
+            f"Task {task_id}\nGoal: {goal}\nRisk: {risk}\nBranch: {branch}\nWorktree: {worktree}\nDependencies: {', '.join(dependencies) or 'none'}\n"
         )
 
         return {
@@ -68,7 +76,8 @@ class Orchestrator:
             "contract": str(contract_path),
             "branch": branch,
             "worktree": str(worktree),
-            "status": TaskStatus.PLANNED.value,
+            "dependencies": dependencies,
+            "status": status,
         }
 
     def get_task_state(self, task_id: str) -> dict | None:

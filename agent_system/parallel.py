@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from .dag import DagScheduler
 from .orchestrator import Orchestrator
 
 
@@ -27,13 +28,7 @@ Worker = Callable[[str], ParallelTaskResult]
 
 
 class ParallelTaskRunner:
-    """Run already-created tasks concurrently in isolated worktrees.
-
-    Phase 5 deliberately parallelizes execution only after task/worktree creation.
-    Preflight rejects duplicate task IDs, branches, or worktree paths before any
-    worker starts. Each default worker runs in a separate Python process, which
-    keeps provider/runtime state isolated while SQLite coordinates through WAL.
-    """
+    """Run ready tasks concurrently in isolated worktrees."""
 
     def __init__(self, root: Path, worker: Worker | None = None):
         self.root = Path(root).resolve()
@@ -57,7 +52,7 @@ class ParallelTaskRunner:
                 task_id = futures[future]
                 try:
                     result = future.result()
-                except Exception as exc:  # keep sibling tasks running and report failure
+                except Exception as exc:
                     result = ParallelTaskResult(task_id, 1, "", f"worker exception: {exc}")
                 results_by_id[task_id] = result
         return [results_by_id[task_id] for task_id in task_ids]
@@ -65,10 +60,12 @@ class ParallelTaskRunner:
     def _preflight(self, task_ids: list[str]) -> None:
         worktrees: dict[str, str] = {}
         branches: dict[str, str] = {}
+        scheduler = DagScheduler(self.orchestrator.state)
         for task_id in task_ids:
             state = self.orchestrator.state.get_task(task_id)
             if not state:
                 raise ValueError(f"Unknown task: {task_id}")
+            scheduler.assert_runnable(task_id)
             worktree_raw = state.get("worktree")
             branch = state.get("branch")
             if not worktree_raw:

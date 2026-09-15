@@ -15,12 +15,11 @@ class StateStore:
     def _connect(self):
         con = sqlite3.connect(self.db_path, timeout=30.0)
         con.execute("PRAGMA busy_timeout=30000")
+        con.execute("PRAGMA foreign_keys=ON")
         return con
 
     def _init_db(self) -> None:
         with self._connect() as con:
-            # WAL allows readers and independent task workers to coexist while
-            # SQLite still serializes individual writes safely.
             con.execute("PRAGMA journal_mode=WAL")
             con.execute("PRAGMA synchronous=NORMAL")
             con.execute("""
@@ -40,6 +39,20 @@ class StateStore:
                     FOREIGN KEY(task_id) REFERENCES tasks(id)
                 )
             """)
+            con.execute("""
+                CREATE TABLE IF NOT EXISTS task_dependencies (
+                    task_id TEXT NOT NULL,
+                    depends_on_task_id TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    PRIMARY KEY(task_id, depends_on_task_id),
+                    FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+                    FOREIGN KEY(depends_on_task_id) REFERENCES tasks(id) ON DELETE RESTRICT
+                )
+            """)
+            con.execute(
+                "CREATE INDEX IF NOT EXISTS idx_task_dependencies_parent "
+                "ON task_dependencies(depends_on_task_id)"
+            )
 
     def next_task_id(self) -> str:
         with self._connect() as con:
@@ -91,6 +104,39 @@ class StateStore:
             con.row_factory = sqlite3.Row
             rows = con.execute("SELECT * FROM tasks ORDER BY created_at DESC").fetchall()
         return [dict(r) for r in rows]
+
+    def add_dependency(self, task_id: str, depends_on_task_id: str) -> None:
+        with self._connect() as con:
+            con.execute(
+                "INSERT OR IGNORE INTO task_dependencies "
+                "(task_id, depends_on_task_id, created_at) VALUES (?, ?, ?)",
+                (task_id, depends_on_task_id, datetime.now(timezone.utc).isoformat()),
+            )
+
+    def remove_dependency(self, task_id: str, depends_on_task_id: str) -> None:
+        with self._connect() as con:
+            con.execute(
+                "DELETE FROM task_dependencies WHERE task_id = ? AND depends_on_task_id = ?",
+                (task_id, depends_on_task_id),
+            )
+
+    def get_dependencies(self, task_id: str) -> list[str]:
+        with self._connect() as con:
+            rows = con.execute(
+                "SELECT depends_on_task_id FROM task_dependencies "
+                "WHERE task_id = ? ORDER BY created_at, depends_on_task_id",
+                (task_id,),
+            ).fetchall()
+        return [row[0] for row in rows]
+
+    def get_dependents(self, task_id: str) -> list[str]:
+        with self._connect() as con:
+            rows = con.execute(
+                "SELECT task_id FROM task_dependencies "
+                "WHERE depends_on_task_id = ? ORDER BY created_at, task_id",
+                (task_id,),
+            ).fetchall()
+        return [row[0] for row in rows]
 
     def record_event(self, task_id: str, state_before: str | None, state_after: str, provider_id: str | None, action: str, result: str | None = None, duration_ms: int | None = None) -> None:
         now = datetime.now(timezone.utc).isoformat()
