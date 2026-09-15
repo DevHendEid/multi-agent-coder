@@ -13,10 +13,16 @@ class StateStore:
         self._init_db()
 
     def _connect(self):
-        return sqlite3.connect(self.db_path)
+        con = sqlite3.connect(self.db_path, timeout=30.0)
+        con.execute("PRAGMA busy_timeout=30000")
+        return con
 
     def _init_db(self) -> None:
         with self._connect() as con:
+            # WAL allows readers and independent task workers to coexist while
+            # SQLite still serializes individual writes safely.
+            con.execute("PRAGMA journal_mode=WAL")
+            con.execute("PRAGMA synchronous=NORMAL")
             con.execute("""
                 CREATE TABLE IF NOT EXISTS tasks (
                     id TEXT PRIMARY KEY, project TEXT NOT NULL, goal TEXT NOT NULL,
