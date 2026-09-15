@@ -15,6 +15,7 @@ from .providers import ProviderAvailability
 from .repair import RepairLoop
 from .reviewer import Reviewer, ReviewResult, ReviewVerdict
 from .router import ModelRouter, RoutingDecision
+from .runtime_lock import TaskLease, TaskLeaseError
 from .scope import ScopeGate
 from .verifier import VerificationReport, Verifier
 
@@ -44,6 +45,13 @@ class Implementer:
         self.artifacts = artifacts
 
     def run(self, task_id: str) -> ImplementationResult:
+        try:
+            with TaskLease(self.orchestrator.root, task_id):
+                return self._run_locked(task_id)
+        except TaskLeaseError as exc:
+            return ImplementationResult(False, None, [], "", "", str(exc), {"runtime_lock": "busy"}, 0)
+
+    def _run_locked(self, task_id: str) -> ImplementationResult:
         state = self.orchestrator.state.get_task(task_id)
         if not state:
             raise ValueError(f"Task not found: {task_id}")
