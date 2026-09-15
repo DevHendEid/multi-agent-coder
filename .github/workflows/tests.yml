@@ -2,31 +2,53 @@ name: tests
 
 on:
   push:
-    branches:
-      - main
-      - phase-3-5-free-provider
+    branches: [main]
   pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12']
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ matrix.python-version }}
+          cache: pip
       - name: Install
         run: |
           python -m pip install --upgrade pip
           pip install -e .
           pip install pytest
+          pip check
       - name: Test
         run: python -m pytest -q
       - name: Compile
         run: python -m compileall -q agent_system
+      - name: CLI smoke
+        run: |
+          agent --help >/dev/null
+          agent-pr --help >/dev/null
       - name: Assert no shell=True
         run: |
           if grep -R "shell=True" agent_system tests config; then
             echo "shell=True found"
+            exit 1
+          fi
+      - name: Assert no tracked runtime state
+        run: |
+          if git ls-files | grep -E '(^|/)(state|benchmarks)\.db$|(^|/)runs/|(^|/)\.agent-system/'; then
+            echo "Runtime state must not be tracked"
             exit 1
           fi
