@@ -78,7 +78,7 @@ def test_repair_round_exposes_verification_failure_to_provider(tmp_path: Path):
         stdout="",
         stderr="AssertionError: expected 5",
         duration_ms=1,
-        timed_out=False,
+        timeout=False,
         status="FAIL",
     )
     verification = VerificationReport("TASK-R", "low", None, None, [failed_command], "FAIL", "now")
