@@ -6,7 +6,7 @@ import shutil
 import socket
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -72,7 +72,7 @@ class TaskLease:
                 acquired_at=datetime.now(timezone.utc).isoformat(),
             )
             tmp = self.lock_dir / f"lease.{self.token}.tmp"
-            tmp.write_text(json.dumps(info.__dict__, indent=2))
+            tmp.write_text(json.dumps(asdict(info), indent=2))
             os.replace(tmp, self.info_path)
             self._owned = True
             return
@@ -96,8 +96,7 @@ class TaskLease:
     def _reclaim_if_stale(self) -> bool:
         owner = self._read_owner()
         if not owner:
-            age = self._lock_age()
-            if age >= self.stale_after_seconds:
+            if self._lock_age() >= self.stale_after_seconds:
                 shutil.rmtree(self.lock_dir, ignore_errors=True)
                 return True
             return False
