@@ -52,7 +52,19 @@ class CommandProvider(ModelProvider):
             return ExecutionResult(False, "", f"Command execution failed: {exc}", [])
         finally:
             prompt_file.unlink(missing_ok=True)
-        return ExecutionResult(result.returncode == 0, result.stdout, result.stderr if result.returncode != 0 else None, self._detect_modified_files(worktree), {"returncode": result.returncode, "command": cmd})
+        metadata = {
+            "returncode": result.returncode,
+            "executable": Path(cmd[0]).name,
+            "argv_count": len(cmd),
+            "command_redacted": True,
+        }
+        return ExecutionResult(
+            result.returncode == 0,
+            result.stdout,
+            result.stderr if result.returncode != 0 else None,
+            self._detect_modified_files(worktree),
+            metadata,
+        )
 
     def _build_prompt(self, task: dict[str, Any], context: dict[str, Any]) -> str:
         parts = [f"Task: {task.get('id','unknown')}", f"Goal: {task.get('goal','')}", f"Risk: {task.get('risk','medium')}", "", f"Allowed scope: {task.get('allowed_scope', [])}", f"Forbidden scope: {task.get('forbidden_scope', [])}", "", "Repository context:"]
