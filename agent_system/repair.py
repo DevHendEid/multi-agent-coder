@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 import time
 from dataclasses import asdict, dataclass
@@ -115,20 +116,28 @@ class RepairLoop:
                 return RepairRoundResult(False, error=f"Provider {provider_id} unavailable and no fallback")
 
         context = self.context_builder.build(task_id, state["goal"], state["risk"], [], project.protected_paths, worktree_path, original_repo)
+        repair_context = {
+            "previous_diff": current_diff,
+            "verification_failures": self._extract_failures(verification),
+            "review_verdict": review.verdict,
+            "review_notes": review.notes,
+        }
         task_data = {
             "id": task_id,
             "goal": state["goal"],
             "risk": state["risk"],
             "allowed_scope": [],
             "forbidden_scope": project.protected_paths,
-            "repair_context": {
-                "previous_diff": current_diff,
-                "verification_failures": self._extract_failures(verification),
-                "review_verdict": review.verdict,
-                "review_notes": review.notes,
-            },
+            "repair_context": repair_context,
         }
-        context_data = {"selected_files": [asdict(f) for f in context.selected_files], "repo": asdict(context.repo), "task": asdict(context.task)}
+        selected_files = [asdict(f) for f in context.selected_files]
+        repair_text = json.dumps(repair_context, indent=2, default=str)
+        selected_files.append({
+            "path": "__repair_context__.json",
+            "size": len(repair_text.encode("utf-8")),
+            "content": repair_text,
+        })
+        context_data = {"selected_files": selected_files, "repo": asdict(context.repo), "task": asdict(context.task)}
         scope_gate = ScopeGate(worktree_path, [], project.protected_paths, original_repo)
         scope_gate.record_baseline()
         result = provider.execute(task_data, context_data, worktree_path)
