@@ -11,6 +11,7 @@ dependencies = ["PyYAML>=6.0"]
 
 [project.scripts]
 agent = "agent_system.cli:main"
+agent-pr = "agent_system.github_pr:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
