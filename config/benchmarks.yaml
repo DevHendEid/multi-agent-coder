@@ -1,0 +1,10 @@
+policy:
+  validation_runs: 2
+  required_pass_rate: 1.0
+  reject_below_pass_rate: 0.5
+
+# Phase 7 policy:
+# - first perfect deterministic run => CANDIDATE
+# - second consecutive perfect run for the same provider/model => VALIDATED
+# - a run below reject_below_pass_rate => REJECTED until a later run improves status
+# - router never auto-promotes config trust; it only excludes benchmark-REJECTED models
