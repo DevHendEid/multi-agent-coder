@@ -19,6 +19,7 @@ from .multi_reviewer import IndependentReviewPanel
 from .repair import RepairLoop
 from .artifacts import RunArtifacts
 from .models import TaskStatus
+from .parallel import ParallelTaskRunner
 
 
 def find_root() -> Path:
@@ -156,6 +157,26 @@ def cmd_run(args):
         print(f"FAILED: {result.error}")
         state_after = orch.state.get_task(args.task_id)
         print(f"Status: {state_after.get('status')}")
+        sys.exit(1)
+
+
+def cmd_run_many(args):
+    runner = ParallelTaskRunner(find_root())
+    try:
+        results = runner.run(args.task_ids, max_workers=args.workers)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
+
+    any_failed = False
+    for result in results:
+        status = "PASS" if result.success else "FAIL"
+        print(f"=== {result.task_id}: {status} ===")
+        if result.stdout.strip():
+            print(result.stdout.rstrip())
+        if result.stderr.strip():
+            print(result.stderr.rstrip(), file=sys.stderr)
+        any_failed = any_failed or not result.success
+    if any_failed:
         sys.exit(1)
 
 
@@ -312,6 +333,11 @@ def build_parser():
     run = sub.add_parser("run", help="Run implementation for a task")
     run.add_argument("task_id")
     run.set_defaults(func=cmd_run)
+
+    run_many = sub.add_parser("run-many", help="Run multiple isolated tasks concurrently")
+    run_many.add_argument("task_ids", nargs="+")
+    run_many.add_argument("--workers", type=int, default=2, help="Maximum concurrent task workers")
+    run_many.set_defaults(func=cmd_run_many)
 
     verify = sub.add_parser("verify", help="Run verification for a task")
     verify.add_argument("task_id")
