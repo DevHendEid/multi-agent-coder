@@ -7,13 +7,14 @@ from pathlib import Path
 import pytest
 
 from agent_system.models import TaskStatus
+from agent_system.orchestrator import Orchestrator
 from agent_system.parallel import ParallelTaskResult, ParallelTaskRunner
 from agent_system.state import StateStore
 
 
 def prepare_task(root: Path, task_id: str, worktree: Path, branch: str) -> None:
-    worktree.mkdir(parents=True)
-    state = StateStore(root / ".agent" / "state.db")
+    worktree.mkdir(parents=True, exist_ok=True)
+    state = Orchestrator(root).state
     state.create_task(task_id, "demo", f"goal-{task_id}", "low")
     state.update_task(
         task_id,
@@ -53,7 +54,7 @@ def test_parallel_runner_executes_distinct_tasks_concurrently(tmp_path: Path):
 def test_parallel_runner_rejects_shared_worktree_before_start(tmp_path: Path):
     shared = tmp_path / "shared"
     prepare_task(tmp_path, "TASK-0001", shared, "agent/task-0001")
-    state = StateStore(tmp_path / ".agent" / "state.db")
+    state = Orchestrator(tmp_path).state
     state.create_task("TASK-0002", "demo", "goal-2", "low")
     state.update_task(
         "TASK-0002",
