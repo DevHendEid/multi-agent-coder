@@ -5,6 +5,7 @@ from pathlib import Path
 
 import yaml
 
+from .benchmark import BenchmarkRegistry, BenchmarkStatus
 from .providers import ModelProvider, ProviderAvailability, ProviderRegistry
 
 
@@ -17,15 +18,25 @@ class RoutingDecision:
 
 
 class ModelRouter:
-    def __init__(self, registry: ProviderRegistry, routing_config_path: str | Path | None = None):
+    def __init__(self, registry: ProviderRegistry, routing_config_path: str | Path | None = None, benchmark_registry: BenchmarkRegistry | None = None):
         self.registry = registry
         self.routing_config_path = Path(routing_config_path) if routing_config_path else None
+        self.benchmark_registry = benchmark_registry
         self._routing_config: dict[str, list[str]] = {}
         self._load_routing_config()
 
     def _load_routing_config(self) -> None:
         if self.routing_config_path and self.routing_config_path.exists():
             self._routing_config = yaml.safe_load(self.routing_config_path.read_text()) or {}
+
+    def _benchmark_status(self, provider: ModelProvider) -> str:
+        if self.benchmark_registry is None:
+            return BenchmarkStatus.UNBENCHMARKED
+        try:
+            model_name = provider.get_metadata().model_name
+            return self.benchmark_registry.status(provider.provider_id, model_name)
+        except Exception:
+            return BenchmarkStatus.UNBENCHMARKED
 
     def route(self, risk: str) -> RoutingDecision:
         candidates = self._routing_config.get(risk.lower(), [])
@@ -39,8 +50,12 @@ class ModelRouter:
             if not provider:
                 tried.append(f"{provider_id} (not configured)")
                 continue
+            benchmark_status = self._benchmark_status(provider)
+            if benchmark_status == BenchmarkStatus.REJECTED:
+                tried.append(f"{provider_id} (BENCHMARK_REJECTED)")
+                continue
             availability = provider.availability()
-            tried.append(f"{provider_id} ({availability.value})")
+            tried.append(f"{provider_id} ({availability.value}, benchmark={benchmark_status})")
             if availability == ProviderAvailability.AVAILABLE:
                 if selected is None:
                     selected = provider
@@ -51,7 +66,8 @@ class ModelRouter:
         if selected is None:
             wait_state = self._determine_wait_state(tried)
             return RoutingDecision(None, [], f"No available provider for {risk} risk. Tried: {', '.join(tried)}", wait_state)
-        return RoutingDecision(selected, fallbacks, f"Selected {selected.provider_id} ({selected.tier.value}) for {risk} risk", None)
+        status = self._benchmark_status(selected)
+        return RoutingDecision(selected, fallbacks, f"Selected {selected.provider_id} ({selected.tier.value}) for {risk} risk; benchmark={status}", None)
 
     def _determine_wait_state(self, tried: list[str]) -> str:
         if any("QUOTA_EXHAUSTED" in t for t in tried):
@@ -67,7 +83,9 @@ class ModelRouter:
             if pid == failed_provider_id:
                 continue
             p = self.registry.get(pid)
-            if p and p.availability() == ProviderAvailability.AVAILABLE:
+            if not p or self._benchmark_status(p) == BenchmarkStatus.REJECTED:
+                continue
+            if p.availability() == ProviderAvailability.AVAILABLE:
                 fallbacks.append(p)
         if fallbacks:
             return RoutingDecision(fallbacks[0], fallbacks[1:], f"Fallback after {failed_provider_id} failed with {availability.value}: {error}")
