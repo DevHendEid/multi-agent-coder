@@ -1,0 +1,67 @@
+providers:
+  mock-free:
+    type: mock
+    name: "Mock Free Provider"
+    provider_id: "mock-free"
+    tier: free
+    enabled: false
+
+  mock-premium:
+    type: mock
+    name: "Mock Premium Provider"
+    provider_id: "mock-premium"
+    tier: premium
+    enabled: false
+    should_fail: false
+
+  local-command:
+    type: command
+    name: "Local Command Provider"
+    provider_id: "local-command"
+    tier: free
+    enabled: false
+    command:
+      - echo
+      - "No command provider configured"
+    timeout_seconds: 60
+
+  codex:
+    type: command
+    name: "Codex CLI"
+    provider_id: "codex"
+    tier: premium
+    enabled: false
+    command:
+      - codex
+      - run
+      - "{prompt_file}"
+    timeout_seconds: 600
+    env:
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+
+  codex-real:
+    type: codex
+    name: "Codex Real Provider"
+    provider_id: "codex-real"
+    tier: premium
+    enabled: true
+    executable: "codex"
+    model: "gpt-5.6-sol"
+    timeout_seconds: 600
+    sandbox_mode: "workspace-write"
+    approve_for_me: true
+    skip_git_repo_check: true
+    trust_status: "EXPERIMENTAL"
+
+  codex-reviewer:
+    type: codex-reviewer
+    name: "Codex Reviewer"
+    provider_id: "codex-reviewer"
+    tier: premium
+    enabled: true
+    executable: "codex"
+    model: "gpt-5.6-sol"
+    timeout_seconds: 300
+    sandbox_mode: "read-only"
+    skip_git_repo_check: true
+    trust_status: "EXPERIMENTAL"

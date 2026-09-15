@@ -1,0 +1,26 @@
+name: demo
+repository:
+  path: /home/hend/Desktop/agent-demo-repo
+commands:
+  install: ''
+  analyze: ''
+  lint: ''
+  test: ''
+  build: ''
+  integration_test: ''
+protected_paths:
+- .env
+- secrets/
+allowed_generated_paths: []
+timeouts:
+  analyze: 60
+  lint: 60
+  test: 120
+  build: 180
+  integration_test: 300
+environment: {}
+risk_rules:
+  docs: low
+  tests: low
+  architecture: high
+  security: critical
