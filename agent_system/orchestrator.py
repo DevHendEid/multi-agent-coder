@@ -14,6 +14,10 @@ class Orchestrator:
         self.root = Path(root).resolve()
         self.state = StateStore(self.root / ".agent-system" / "state.db")
 
+    def _load_project(self, project_name: str) -> ProjectConfig:
+        project_path = self.root / "projects" / f"{project_name}.yaml"
+        return ProjectConfig.load(project_path)
+
     def create_task(self, project_file: str | Path, goal: str) -> dict:
         project = ProjectConfig.load(project_file)
         task_id = self.state.next_task_id()
@@ -33,7 +37,14 @@ class Orchestrator:
                 "Human approval required before merge",
             ],
         )
-        self.state.create_task(task_id, project.name, goal, risk)
+        self.state.create_task(
+            task_id,
+            project.name,
+            goal,
+            risk,
+            max_free_attempts=contract.max_free_attempts,
+            max_total_repair_rounds=contract.max_free_attempts + 1,
+        )
         contract_path = write_contract(contract, self.root / "tasks")
 
         manager = WorktreeManager(project.repo_path)
@@ -59,3 +70,9 @@ class Orchestrator:
             "worktree": str(worktree),
             "status": TaskStatus.PLANNED.value,
         }
+
+    def get_task_state(self, task_id: str) -> dict | None:
+        return self.state.get_task(task_id)
+
+    def list_tasks(self) -> list[dict]:
+        return self.state.list_tasks()

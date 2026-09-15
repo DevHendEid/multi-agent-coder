@@ -1,24 +1,13 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-.pytest_cache/
 .venv/
 venv/
-
-# Environment / secrets
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.agent-system/
+runs/
+tasks/
 .env
 .env.*
-!.env.example
-secrets/
-
-# Editors / OS
-.vscode/
-.idea/
-.DS_Store
-
-# Build / coverage
-build/
-dist/
-.coverage
-htmlcov/
+*.sqlite
+*.db

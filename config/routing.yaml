@@ -1,0 +1,14 @@
+low:
+  - codex-real
+  - local-command
+
+medium:
+  - codex-real
+  - local-command
+
+high:
+  - codex-real
+  - local-command
+
+critical:
+  - codex-real
