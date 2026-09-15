@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import subprocess
 import yaml
@@ -17,6 +17,18 @@ class ProjectConfig:
     commands: dict[str, str]
     protected_paths: list[str]
     risk_rules: dict[str, str]
+    allowed_generated_paths: list[str] = field(default_factory=list)
+    timeouts: dict[str, int] = field(default_factory=dict)
+    environment: dict[str, str] = field(default_factory=dict)
+
+    COMMAND_KEYS = (
+        "install",
+        "analyze",
+        "lint",
+        "test",
+        "build",
+        "integration_test",
+    )
 
     @classmethod
     def load(cls, path: str | Path) -> "ProjectConfig":
@@ -32,6 +44,9 @@ class ProjectConfig:
                 commands=data.get("commands", {}),
                 protected_paths=data.get("protected_paths", []),
                 risk_rules=data.get("risk_rules", {}),
+                allowed_generated_paths=data.get("allowed_generated_paths", []),
+                timeouts=data.get("timeouts", {}),
+                environment=data.get("environment", {}),
             )
         except KeyError as exc:
             raise ProjectConfigError(f"Missing required project config key: {exc}") from exc
@@ -48,3 +63,36 @@ class ProjectConfig:
         )
         if result.returncode != 0 or result.stdout.strip() != "true":
             raise ProjectConfigError(f"Not a Git repository: {self.repo_path}")
+
+    def get_command(self, key: str) -> str | None:
+        return self.commands.get(key, "").strip() or None
+
+    def get_timeout(self, key: str) -> int:
+        return self.timeouts.get(key, 300)
+
+    def has_command(self, key: str) -> bool:
+        return bool(self.get_command(key))
+
+    def get_verification_commands(self, risk: str) -> list[tuple[str, str]]:
+        commands = []
+        if self.has_command("analyze"):
+            cmd = self.get_command("analyze")
+            if cmd:
+                commands.append(("analyze", cmd))
+        if self.has_command("lint"):
+            cmd = self.get_command("lint")
+            if cmd:
+                commands.append(("lint", cmd))
+        if self.has_command("test"):
+            cmd = self.get_command("test")
+            if cmd:
+                commands.append(("test", cmd))
+        if risk in ("medium", "high", "critical") and self.has_command("build"):
+            cmd = self.get_command("build")
+            if cmd:
+                commands.append(("build", cmd))
+        if risk in ("high", "critical") and self.has_command("integration_test"):
+            cmd = self.get_command("integration_test")
+            if cmd:
+                commands.append(("integration_test", cmd))
+        return commands
