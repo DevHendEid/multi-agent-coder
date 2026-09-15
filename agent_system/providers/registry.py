@@ -9,6 +9,7 @@ from .base import ModelProvider, ProviderAvailability, ProviderTier
 from .mock import MockProvider
 from .command_provider import CommandProvider
 from .codex_provider import CodexProvider, CodexReviewerProvider
+from .ollama_provider import OllamaProvider
 
 
 class ProviderRegistry:
@@ -52,14 +53,15 @@ class ProviderRegistry:
 
         if ptype == "mock":
             return MockProvider(name, provider_id, tier, config)
-        elif ptype == "command":
+        if ptype == "command":
             return CommandProvider(name, provider_id, tier, config)
-        elif ptype == "codex":
+        if ptype == "codex":
             return CodexProvider(name, provider_id, tier, config)
-        elif ptype == "codex-reviewer":
+        if ptype == "codex-reviewer":
             return CodexReviewerProvider(name, provider_id, tier, config)
-        else:
-            return None
+        if ptype == "ollama":
+            return OllamaProvider(name, provider_id, tier, config)
+        return None
 
     def list_available(self) -> list[ModelProvider]:
         result = []

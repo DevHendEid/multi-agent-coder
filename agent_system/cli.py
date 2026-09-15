@@ -9,7 +9,7 @@ import yaml
 from .orchestrator import Orchestrator
 from .project import ProjectConfigError
 from .worktree import WorktreeError
-from .providers import ProviderRegistry
+from .providers import ProviderRegistry, ProviderAvailability
 from .router import ModelRouter
 from .context import ContextBuilder
 from .implementer import Implementer
@@ -25,10 +25,11 @@ def find_root() -> Path:
 
 
 def build_reviewer(registry: ProviderRegistry, worktree: Path) -> Reviewer:
-    """Prefer the configured AI reviewer; fall back safely when unavailable."""
-    provider = registry.get("codex-reviewer")
-    if provider is not None:
-        return ProviderReviewer(provider, worktree)
+    """Prefer an available free/local reviewer, then Codex, then deterministic review."""
+    for provider_id in ("ollama-reviewer", "codex-reviewer"):
+        provider = registry.get(provider_id)
+        if provider is not None and provider.availability() == ProviderAvailability.AVAILABLE:
+            return ProviderReviewer(provider, worktree)
     return Reviewer(reviewer_id="deterministic-reviewer")
 
 
@@ -97,9 +98,10 @@ def cmd_models(args):
     registry = ProviderRegistry(orch.root / "config" / "models.yaml")
     providers = registry.list_all()
     for p in providers:
-        avail = p.availability()
+        metadata = p.get_metadata()
         caps = p.capabilities()
-        print(f"{p.provider_id} ({p.tier.value}) - {avail.value}")
+        print(f"{p.provider_id} ({p.tier.value}) - {metadata.availability.value} - {metadata.trust_status.value}")
+        print(f"  Model: {metadata.model_name}")
         print(f"  Tools: {caps.supports_tools}, File Editing: {caps.supports_file_editing}, Long Context: {caps.supports_long_context}")
 
 
@@ -183,7 +185,6 @@ def cmd_review(args):
     if not verification_path.exists():
         raise SystemExit("Verification report not found. Run 'agent verify' first.")
 
-    import json
     verification_data = json.loads(verification_path.read_text())
     from .verifier import VerificationReport, VerificationResult
     scope_gate_res = None
