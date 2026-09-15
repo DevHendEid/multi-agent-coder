@@ -67,24 +67,67 @@ class CodexProvider(ModelProvider):
         error = result.stderr if result.returncode != 0 else None
         combined = (result.stdout + result.stderr).lower()
         if "usage limit" in combined or "quota" in combined:
-            error = "Quota exhausted"; success = False
-        return ExecutionResult(success, result.stdout, error, modified_files, {"returncode": result.returncode, "command": cmd, "duration_ms": duration_ms, "model": self.model, "trust_status": self.trust_status})
+            error = "Quota exhausted"
+            success = False
+        return ExecutionResult(
+            success,
+            result.stdout,
+            error,
+            modified_files,
+            {
+                "returncode": result.returncode,
+                "command": self._redact_command(cmd),
+                "duration_ms": duration_ms,
+                "model": self.model,
+                "trust_status": self.trust_status,
+            },
+        )
 
     def _build_command(self, prompt_content: str, worktree: Path, output_file: Path) -> list[str]:
         cmd = [self.executable, "exec"]
-        if self.skip_git_repo_check: cmd.append("--skip-git-repo-check")
+        if self.skip_git_repo_check:
+            cmd.append("--skip-git-repo-check")
         cmd.extend(["-C", str(worktree)])
-        if self.approve_for_me: cmd.append("--approve-for-me")
+        # Current Codex CLI rejects --approve-for-me together with --sandbox.
+        # Prefer the explicit sandbox policy when one is configured.
+        if self.approve_for_me and not self.sandbox_mode:
+            cmd.append("--approve-for-me")
         cmd.extend(["-m", self.model])
-        if self.sandbox_mode: cmd.extend(["-s", self.sandbox_mode])
+        if self.sandbox_mode:
+            cmd.extend(["-s", self.sandbox_mode])
         cmd.extend(["--output-last-message", str(output_file), "--json", prompt_content])
         return cmd
 
+    @staticmethod
+    def _redact_command(cmd: list[str]) -> list[str]:
+        """Return command metadata without persisting the full prompt/context."""
+        redacted = list(cmd)
+        if redacted:
+            redacted[-1] = "<PROMPT_REDACTED>"
+        return redacted
+
     def _build_prompt(self, task: dict[str, Any], context: dict[str, Any]) -> str:
-        parts = [f"Task: {task.get('id','unknown')}", f"Goal: {task.get('goal','')}", f"Risk: {task.get('risk','medium')}", "", "Context:", f"Allowed scope: {task.get('allowed_scope', [])}", f"Forbidden scope: {task.get('forbidden_scope', [])}", "", "Repository context:"]
+        parts = [
+            f"Task: {task.get('id','unknown')}",
+            f"Goal: {task.get('goal','')}",
+            f"Risk: {task.get('risk','medium')}",
+            "",
+            "Context:",
+            f"Allowed scope: {task.get('allowed_scope', [])}",
+            f"Forbidden scope: {task.get('forbidden_scope', [])}",
+            "",
+            "Repository context:",
+        ]
         for f in context.get("selected_files", []):
             parts.extend([f"--- {f['path']} ({f['size']} bytes) ---", f.get("content", "")])
-        parts.extend(["", "Instructions:", "1. Implement the requested changes in the repository.", "2. Only modify files within the allowed scope.", "3. Do not modify protected paths.", "4. Write clean, tested code following project conventions."])
+        parts.extend([
+            "",
+            "Instructions:",
+            "1. Implement the requested changes in the repository.",
+            "2. Only modify files within the allowed scope.",
+            "3. Do not modify protected paths.",
+            "4. Write clean, tested code following project conventions.",
+        ])
         return "\n".join(parts)
 
     def _detect_modified_files(self, worktree: Path) -> list[str]:
@@ -96,10 +139,14 @@ class CodexProvider(ModelProvider):
 
     def classify_error(self, error: Exception) -> ProviderAvailability:
         s = str(error).lower()
-        if "quota" in s or "usage limit" in s or "credit" in s: return ProviderAvailability.QUOTA_EXHAUSTED
-        if "rate" in s or "limit" in s or "timeout" in s: return ProviderAvailability.RATE_LIMITED
-        if "auth" in s or "unauthorized" in s or "401" in s or "403" in s: return ProviderAvailability.AUTH_ERROR
-        if "not found" in s or "no such file" in s or "unavailable" in s or "connection" in s: return ProviderAvailability.UNAVAILABLE
+        if "quota" in s or "usage limit" in s or "credit" in s:
+            return ProviderAvailability.QUOTA_EXHAUSTED
+        if "rate" in s or "limit" in s or "timeout" in s:
+            return ProviderAvailability.RATE_LIMITED
+        if "auth" in s or "unauthorized" in s or "401" in s or "403" in s:
+            return ProviderAvailability.AUTH_ERROR
+        if "not found" in s or "no such file" in s or "unavailable" in s or "connection" in s:
+            return ProviderAvailability.UNAVAILABLE
         return ProviderAvailability.PROVIDER_ERROR
 
 
@@ -111,8 +158,10 @@ class CodexReviewerProvider(ModelProvider):
         self.timeout_seconds = config.get("timeout_seconds", 300) if config else 300
         self.sandbox_mode = config.get("sandbox_mode", "read-only") if config else "read-only"
         self.skip_git_repo_check = config.get("skip_git_repo_check", True) if config else True
-        try: self.trust_status = ProviderTrustStatus(config.get("trust_status", "EXPERIMENTAL") if config else "EXPERIMENTAL")
-        except ValueError: self.trust_status = ProviderTrustStatus.EXPERIMENTAL
+        try:
+            self.trust_status = ProviderTrustStatus(config.get("trust_status", "EXPERIMENTAL") if config else "EXPERIMENTAL")
+        except ValueError:
+            self.trust_status = ProviderTrustStatus.EXPERIMENTAL
 
     def availability(self) -> ProviderAvailability:
         try:
@@ -144,22 +193,52 @@ class CodexReviewerProvider(ModelProvider):
         except Exception as exc:
             return ExecutionResult(False, "", f"Codex review execution failed: {exc}", [], {"duration_ms": int((time.perf_counter()-start)*1000)})
         review_data = self._parse_review_output(result.stdout)
-        return ExecutionResult(result.returncode == 0, result.stdout, result.stderr if result.returncode != 0 else None, [], {"returncode": result.returncode, "command": cmd, "duration_ms": duration_ms, "model": self.model, "trust_status": self.trust_status, "review": review_data})
+        return ExecutionResult(
+            result.returncode == 0,
+            result.stdout,
+            result.stderr if result.returncode != 0 else None,
+            [],
+            {
+                "returncode": result.returncode,
+                "command": CodexProvider._redact_command(cmd),
+                "duration_ms": duration_ms,
+                "model": self.model,
+                "trust_status": self.trust_status,
+                "review": review_data,
+            },
+        )
 
     def _build_review_command(self, prompt_content: str, worktree: Path, output_file: Path) -> list[str]:
         cmd = [self.executable, "exec"]
-        if self.skip_git_repo_check: cmd.append("--skip-git-repo-check")
+        if self.skip_git_repo_check:
+            cmd.append("--skip-git-repo-check")
         cmd.extend(["-C", str(worktree), "-s", self.sandbox_mode, "-m", self.model, "--output-last-message", str(output_file), "--json", prompt_content])
         return cmd
 
     def _build_review_prompt(self, task: dict[str, Any], context: dict[str, Any]) -> str:
-        return "\n".join([f"Task: {task.get('id','unknown')}", f"Goal: {task.get('goal','')}", f"Risk: {task.get('risk','medium')}", "", "You are an independent code reviewer. Analyze the changes and provide a structured review.", "", "Git diff to review:", task.get("diff", ""), "", "Verification results:", json.dumps(context.get("verification_report", {}), indent=2), "", "Output JSON exactly with verdict, notes, details. Allowed verdicts: PASS, PASS_WITH_NOTES, FAIL_SCOPE, FAIL_CORRECTNESS, FAIL_TESTS, FAIL_ARCHITECTURE, FAIL_SECURITY, NEEDS_HUMAN_DECISION. Deterministic failures cannot be overridden."])
+        return "\n".join([
+            f"Task: {task.get('id','unknown')}",
+            f"Goal: {task.get('goal','')}",
+            f"Risk: {task.get('risk','medium')}",
+            "",
+            "You are an independent code reviewer. Analyze the changes and provide a structured review.",
+            "",
+            "Git diff to review:",
+            task.get("diff", ""),
+            "",
+            "Verification results:",
+            json.dumps(context.get("verification_report", {}), indent=2),
+            "",
+            "Output JSON exactly with verdict, notes, details. Allowed verdicts: PASS, PASS_WITH_NOTES, FAIL_SCOPE, FAIL_CORRECTNESS, FAIL_TESTS, FAIL_ARCHITECTURE, FAIL_SECURITY, NEEDS_HUMAN_DECISION. Deterministic failures cannot be overridden.",
+        ])
 
     def _parse_review_output(self, output: str) -> dict[str, Any]:
         for line in output.strip().split("\n"):
             if line.strip().startswith("{"):
-                try: return json.loads(line.strip())
-                except json.JSONDecodeError: pass
+                try:
+                    return json.loads(line.strip())
+                except json.JSONDecodeError:
+                    pass
         return {"verdict": "NEEDS_HUMAN_DECISION", "notes": "Could not parse review output", "details": {}}
 
     def classify_error(self, error: Exception) -> ProviderAvailability:
