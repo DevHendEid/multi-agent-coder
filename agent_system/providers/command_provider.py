@@ -13,10 +13,11 @@ from .base import ExecutionResult, ModelProvider, ProviderAvailability, Provider
 class CommandProvider(ModelProvider):
     def __init__(self, name: str, provider_id: str, tier: ProviderTier, config: dict[str, Any] | None = None):
         super().__init__(name, provider_id, tier, config)
-        self.command_template = config.get("command") if config else []
-        self.timeout_seconds = config.get("timeout_seconds", 300) if config else 300
-        self.workdir = config.get("workdir") if config else None
-        self.env = config.get("env") if config else {}
+        cfg = config or {}
+        self.command_template = cfg.get("command") or []
+        self.timeout_seconds = cfg.get("timeout_seconds", 300)
+        self.workdir = cfg.get("workdir")
+        self.env = cfg.get("env") or {}
 
     def availability(self) -> ProviderAvailability:
         if not self.command_template:
