@@ -378,7 +378,7 @@ class OllamaProvider(ModelProvider):
         patch_env = dict(os.environ)
         patch_env.setdefault("PIPE_OUTPUT", "1")
         dry_run = subprocess.run(
-            ["patch", "--dry-run", "--no-backup-if-mismatch", "-p1", "-i", "-"],
+            ["patch", "--fuzz=0", "--dry-run", "--no-backup-if-mismatch", "-p1", "-i", "-"],
             cwd=str(worktree),
             input=patch,
             text=True,
@@ -388,7 +388,7 @@ class OllamaProvider(ModelProvider):
         )
         if dry_run.returncode == 0:
             applied = subprocess.run(
-                ["patch", "--no-backup-if-mismatch", "-p1", "-i", "-"],
+                ["patch", "--fuzz=0", "--no-backup-if-mismatch", "-p1", "-i", "-"],
                 cwd=str(worktree),
                 input=patch,
                 text=True,

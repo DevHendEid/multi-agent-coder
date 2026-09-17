@@ -36,7 +36,7 @@ class ModelRouter:
             model_name = provider.get_metadata().model_name
             return self.benchmark_registry.status(provider.provider_id, model_name)
         except Exception:
-            return BenchmarkStatus.UNBENCHMARKED
+            return "BENCHMARK_ERROR"
 
     def route(self, risk: str) -> RoutingDecision:
         candidates = self._routing_config.get(risk.lower(), [])
@@ -51,8 +51,8 @@ class ModelRouter:
                 tried.append(f"{provider_id} (not configured)")
                 continue
             benchmark_status = self._benchmark_status(provider)
-            if benchmark_status == BenchmarkStatus.REJECTED:
-                tried.append(f"{provider_id} (BENCHMARK_REJECTED)")
+            if benchmark_status in (BenchmarkStatus.REJECTED, "BENCHMARK_ERROR"):
+                tried.append(f"{provider_id} ({benchmark_status})")
                 continue
             availability = provider.availability()
             tried.append(f"{provider_id} ({availability.value}, benchmark={benchmark_status})")
@@ -61,8 +61,6 @@ class ModelRouter:
                     selected = provider
                 else:
                     fallbacks.append(provider)
-            elif availability in (ProviderAvailability.QUOTA_EXHAUSTED, ProviderAvailability.RATE_LIMITED, ProviderAvailability.UNAVAILABLE):
-                fallbacks.append(provider)
         if selected is None:
             wait_state = self._determine_wait_state(tried)
             return RoutingDecision(None, [], f"No available provider for {risk} risk. Tried: {', '.join(tried)}", wait_state)
@@ -83,7 +81,7 @@ class ModelRouter:
             if pid == failed_provider_id:
                 continue
             p = self.registry.get(pid)
-            if not p or self._benchmark_status(p) == BenchmarkStatus.REJECTED:
+            if not p or self._benchmark_status(p) in (BenchmarkStatus.REJECTED, "BENCHMARK_ERROR"):
                 continue
             if p.availability() == ProviderAvailability.AVAILABLE:
                 fallbacks.append(p)

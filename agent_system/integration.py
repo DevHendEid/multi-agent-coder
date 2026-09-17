@@ -196,16 +196,21 @@ class IntegrationService:
 
         proc = self.gh_runner(["gh", "pr", "checks", branch], worktree)
         output = (proc.stdout or "") + (proc.stderr or "")
+        output_lower = output.lower()
 
-        # Evaluate checks
-        if proc.returncode != 0 and ("fail" in output.lower() or "error" in output.lower()):
+        # 1. Explicit failure / cancellation / error
+        fail_indicators = ["fail", "error", "cancelled", "canceled", "timed_out", "action_required"]
+        if any(term in output_lower for term in fail_indicators):
             self.orchestrator.state.update_task(task_id, status=TaskStatus.CI_FAILED.value)
             return {"status": "FAIL", "raw": output}
-        if "pending" in output.lower() or "in_progress" in output.lower() or "queued" in output.lower():
+
+        # 2. Non-zero exit code without definitive failure (e.g. no checks reported) or pending status
+        pending_indicators = ["pending", "in_progress", "queued", "running", "waiting"]
+        if proc.returncode != 0 or any(term in output_lower for term in pending_indicators) or not output.strip():
             self.orchestrator.state.update_task(task_id, status=TaskStatus.CI_PENDING.value)
             return {"status": "PENDING", "raw": output}
 
-        # Checks passed or no checks required
+        # 3. Only confirmed successful checks when returncode == 0
         return {"status": "PASS", "raw": output}
 
     def merge_pr(
@@ -231,6 +236,8 @@ class IntegrationService:
         if ci["status"] == "PENDING":
             self.orchestrator.state.update_task(task_id, status=TaskStatus.CI_PENDING.value)
             raise IntegrationError(f"Merge blocked: CI checks are pending for task {task_id}")
+        if ci["status"] != "PASS":
+            raise IntegrationError(f"Merge blocked: CI status is not PASS ({ci['status']}) for task {task_id}")
 
         # Enforce Risk Policy
         if risk in {RiskLevel.HIGH.value, RiskLevel.CRITICAL.value} and not human_approved:
@@ -373,8 +380,20 @@ class IntegrationService:
                 try:
                     project = self.orchestrator._load_project(state["project"])
                     WorktreeManager(project.repo_path).remove(Path(worktree))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    self.orchestrator.state.update_task(
+                        task_id,
+                        blocker=f"Worktree cleanup failed: {exc}",
+                    )
+                    self.orchestrator.state.record_event(
+                        task_id,
+                        TaskStatus.COMPLETED.value,
+                        TaskStatus.COMPLETED.value,
+                        state.get("provider_id"),
+                        "worktree_cleanup_failed",
+                        str(exc),
+                    )
+                    raise IntegrationError(f"Worktree cleanup failed for task {task_id}: {exc}") from exc
 
         return receipt
 

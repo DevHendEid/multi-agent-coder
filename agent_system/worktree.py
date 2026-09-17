@@ -28,3 +28,15 @@ class WorktreeManager:
         if result.returncode != 0:
             raise WorktreeError(result.stderr.strip() or result.stdout.strip())
         return branch, path
+
+    def remove(self, path: Path, force: bool = False) -> None:
+        cmd = ["git", "-C", str(self.repo_path), "worktree", "remove", str(path)]
+        if force:
+            cmd.insert(4, "--force")
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise WorktreeError(result.stderr.strip() or result.stdout.strip())
