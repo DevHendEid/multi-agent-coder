@@ -1,17 +1,14 @@
 low:
   - ollama-free
   - codex-real
-  - local-command
 
 medium:
   - ollama-free
   - codex-real
-  - local-command
 
 high:
   - codex-real
   - ollama-free
-  - local-command
 
 critical:
   - codex-real

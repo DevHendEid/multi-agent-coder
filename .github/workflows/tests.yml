@@ -42,6 +42,8 @@ jobs:
           agent-pr --help >/dev/null
           agent-doctor --help >/dev/null
           agent-recover --help >/dev/null
+      - name: Doctor config check
+        run: agent-doctor
       - name: Assert no shell=True
         run: |
           if grep -R "shell=True" agent_system tests config; then
