@@ -107,8 +107,10 @@ class ScopeGate:
                         violations.append(ScopeViolation("original_repo", f"original repository state cannot be compared to baseline: {current_status}"))
                 elif current_status != baseline_status:
                     violations.append(ScopeViolation("original_repo", "original repository changed after task execution"))
-        except Exception:
-            pass
+            else:
+                violations.append(ScopeViolation("original_repo", f"unable to inspect original repository (exit {status_result.returncode}): {status_result.stderr.strip()}"))
+        except Exception as exc:
+            violations.append(ScopeViolation("original_repo", f"unable to inspect original repository: {exc}"))
         return violations
 
     def _match_pattern(self, path: str, pattern: str) -> bool:
