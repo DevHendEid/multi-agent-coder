@@ -200,7 +200,33 @@ def test_stale_and_orphan_detection_in_doctor(tmp_path: Path):
 
 
 def test_historical_exception_recognized_but_unrecorded_direct_commit_fails(tmp_path: Path):
-    doctor = Doctor(Path.cwd())
-    checks = doctor.run()
-    direct_check = next(c for c in checks if c.name == "integration:direct_main_commits")
-    assert direct_check.status == "PASS"
+    # 1. Valid repo where commit is recorded in receipts doc
+    repo1 = tmp_path / "repo1"
+    repo1.mkdir()
+    run_git(repo1, "init", "-b", "main")
+    run_git(repo1, "config", "user.email", "test@example.com")
+    run_git(repo1, "config", "user.name", "Test")
+    (repo1 / "file.txt").write_text("initial")
+    run_git(repo1, "add", "file.txt")
+    run_git(repo1, "commit", "-m", "initial")
+    sha1 = run_git(repo1, "rev-parse", "HEAD").stdout.strip()
+
+    docs_dir1 = repo1 / "docs" / "project"
+    docs_dir1.mkdir(parents=True)
+    (docs_dir1 / "INTEGRATION_RECEIPTS.md").write_text(f"# Receipts\n- Commit: `{sha1}`\n")
+
+    doc1 = Doctor(repo1)
+    checks1 = doc1.run()
+    check1 = next(c for c in checks1 if c.name == "integration:direct_main_commits")
+    assert check1.status == "PASS"
+
+    # 2. Repo where a direct commit exists but is NOT recorded in receipts doc
+    (repo1 / "file.txt").write_text("unrecorded change")
+    run_git(repo1, "add", "file.txt")
+    run_git(repo1, "commit", "-m", "unrecorded commit")
+
+    doc2 = Doctor(repo1)
+    checks2 = doc2.run()
+    check2 = next(c for c in checks2 if c.name == "integration:direct_main_commits")
+    assert check2.status == "FAIL"
+    assert "unrecorded direct-main commits" in check2.detail
