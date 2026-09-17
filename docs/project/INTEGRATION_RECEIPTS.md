@@ -123,3 +123,25 @@ Immutable audit log of all completed merges, phase integrations, and repository 
   - `origin/chore/github-toolkit`:
     - Ahead of main: **1** (commit `77c5b53`: *chore: add complete GitHub quality and security toolkit*).
     - Safety Action: Branch preserved intact under disposition `DEFER_WITH_BLOCKER` to prevent losing unmerged toolkit assets.
+
+---
+
+## 3. Historical Integration Exceptions
+
+### HISTORICAL_INTEGRATION_EXCEPTION-001: Direct Main Governance Baseline
+- **Commit SHA**: `38fc7d9e9014c03a9463fe1cb2606edeeea6e751`
+- **Short SHA**: `38fc7d9`
+- **Title**: `docs: initialize authoritative project governance and fix test runner portability`
+- **Date**: 2026-09-17
+- **Reason**: Initial establishment of the authoritative project governance structure (`docs/project/`) and portable test runner execution (`sys.executable`).
+- **Local Validation Evidence**: 53 passed pytest suite, clean `agent-doctor`, clean working tree.
+- **PR**: NONE (direct-main commit exception).
+- **Context**: Committed directly to local main before the enforcement of the new Continuous Main Integration policy.
+- **Enforcement Notice**: This entry is an immutable historical exception. Future production-targeted changes are strictly prohibited from using this route and must go through task worktree -> verification -> review -> PR -> GitHub CI -> guarded merge -> main confirmation.
+
+### BASELINE_COMMITS: Repository Inception
+- **Initial Root Commit**: `e03301c` (`Initial commit`)
+- **Foundation V1 Import**: `6a16131` (`Import Multi-Agent Coder Foundation V1`)
+- **Date**: Pre-Phase baseline
+- **Context**: Repository initialization and initial code import prior to multi-agent orchestrator phase progression.
+

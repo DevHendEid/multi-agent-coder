@@ -17,6 +17,7 @@ Historical log of architectural patterns, modules, configurations, and artifacts
 | Static YAML trust status | Empirical `BenchmarkRegistry` admission states | Phase 7 | Ensures models earn admission through reproducible benchmark runs. |
 | Manual git branch/push/PR | `GitHubPRManager` (`agent-pr`) CLI | Phase 8 | Idempotent PR lifecycle and guarded auto-merge automation. |
 | Unchecked configuration drift | `Doctor` (`agent-doctor`) diagnostic pre-flight checks | Phase 9 | Fails early in CI/CD when providers or routing configurations drift. |
+| Direct commit to `main` without PR | `IntegrationService` continuous main integration pipeline | Policy Remediation | Enforces PR, deterministic CI, guarded merge, and receipts. |
 
 ---
 
@@ -24,3 +25,4 @@ Historical log of architectural patterns, modules, configurations, and artifacts
 
 - **Worktree `dull-candytuft`**: Stale worktree at commit `8fc4086` left over from Phase 9. Pruned on 2026-09-17 after verifying zero unmerged work.
 - **`FINAL_REPORT.md`**: Marked `HISTORICAL`. Captures Phase 3.5 audit snapshot; superseded for ongoing architecture by `docs/project/`.
+

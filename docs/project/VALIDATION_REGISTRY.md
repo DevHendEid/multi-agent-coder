@@ -82,3 +82,4 @@ Configured in `config/benchmarks.yaml`:
   - `mock-free`: VALIDATED (in test harness)
   - `codex-real`: UNBENCHMARKED / EXPERIMENTAL
   - `ollama-free`: UNBENCHMARKED / EXPERIMENTAL
+

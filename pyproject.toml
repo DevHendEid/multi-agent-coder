@@ -9,6 +9,14 @@ description = "Generic foundation for a near-autonomous multi-agent coding orche
 requires-python = ">=3.11"
 dependencies = ["PyYAML>=6.0"]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "types-PyYAML>=6.0",
+]
+
 [project.scripts]
 agent = "agent_system.cli:main"
 agent-pr = "agent_system.github_pr:main"

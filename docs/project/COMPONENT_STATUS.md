@@ -211,3 +211,14 @@ This registry tracks every component in the repository.
 - **Validation Status**: VALIDATED (`tests/test_production_hardening.py` passing)
 - **Integration Status**: PRODUCTION_ACTIVE
 - **Blocker**: NONE
+
+### IntegrationService
+- **Purpose**: Single integration and finalization service enforcing continuous main integration, CI gates, guarded merges, main reachability, and receipts.
+- **Implementation Path**: `agent_system/integration.py`
+- **Consumer**: `agent_system/github_pr.py`, CI automation, finalization workflows
+- **Lifecycle Disposition**: `INTEGRATE`
+- **Production Reachability**: YES
+- **Validation Status**: VALIDATED (`tests/test_integration_enforcement.py` passing)
+- **Integration Status**: PRODUCTION_ACTIVE
+- **Blocker**: NONE
+

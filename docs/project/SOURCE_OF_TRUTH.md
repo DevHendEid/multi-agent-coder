@@ -67,3 +67,4 @@ A production-targeted task reaches `PROJECT_COMPLETE` if and only if:
   - Phase 7: Model benchmark registry and admission classification (`BenchmarkRegistry`).
   - Phase 8: GitHub PR integration CLI and guarded auto-merge automation (`GitHubPRManager`).
   - Phase 9: Production hardening, doctor diagnostics (`Doctor`), crash recovery (`SystemRecovery`), and runtime lock management (`RuntimeLock`).
+

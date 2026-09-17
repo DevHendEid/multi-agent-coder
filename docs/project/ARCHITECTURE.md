@@ -85,3 +85,4 @@ flowchart TD
 ### 2.7 Multi-Task Scheduling & Parallelism
 - **`TaskDAG`** ([agent_system/dag.py](file:///home/hend/Desktop/multi-agent-coder/agent_system/dag.py)): Builds a directed acyclic graph of task dependencies, detecting cycles and returning executable stages in topological order.
 - **`ParallelExecutor`** ([agent_system/parallel.py](file:///home/hend/Desktop/multi-agent-coder/agent_system/parallel.py)): Concurrently executes independent DAG tasks across dedicated worktrees.
+

@@ -1,16 +1,27 @@
 ## Summary
 
-Describe the change and the task it satisfies.
+Describe the change and why it is needed.
 
-## Required checks
+## Risk
 
-- [ ] Deterministic verification passes
-- [ ] Scope/diff gates pass
-- [ ] Independent review completed
-- [ ] No unrelated files changed
-- [ ] No secrets or runtime state committed
-- [ ] Human review completed before merge
+- [ ] Low
+- [ ] Medium
+- [ ] High
+- [ ] Critical
 
-## Safety
+## Verification
 
-Multi-Agent Coder must not auto-merge or auto-deploy. Critical or human-gated changes require explicit human approval.
+- [ ] Tests added/updated
+- [ ] `ruff check .` passes
+- [ ] `mypy agent_system` passes
+- [ ] `pytest` passes
+- [ ] No secrets or licensed/private data added
+- [ ] No unrelated changes
+
+## Security / Data
+
+List any security, credential, privacy, licensing, or external-data implications.
+
+## Rollback
+
+Describe how to revert or disable the change safely.

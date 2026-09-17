@@ -72,3 +72,4 @@ graph TD
 | `agent_system/providers/ollama.py` | Ollama local implementer & reviewer | `DEFER_WITH_BLOCKER` | Configured as `EXPERIMENTAL`; local Ollama daemon & live acceptance tests required to validate. |
 | `origin/chore/github-toolkit` | Remote branch (commit `77c5b53`) | `DEFER_WITH_BLOCKER` | Contains complete GitHub CI templates, CodeQL, security scanning, and Dependabot; unmerged to `main`. |
 | `projects/demo.yaml`, `example.yaml` | Project templates | `COMPLETE_REUSABLE` | Configuration templates for user onboarding; point to placeholder paths. |
+

@@ -383,25 +383,51 @@ Authoritative catalog of all key assets in the repository.
 
 ### ASSET-016: GitHub Quality & Security Toolkit
 - **asset_id**: ASSET-016
-- **purpose**: Complete GitHub workflows (CI, CodeQL, security scanning, dependabot, templates)
+- **purpose**: Complete GitHub workflows, templates, dependabot, and pre-commit tooling
 - **owner/component**: CI/CD & Governance
-- **implementation path**: Multiple files on branch `chore/github-toolkit`
+- **implementation path**: `.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/*`, `.github/dependabot.yml`, `.github/pull_request_template.md`, `CONTRIBUTING.md`, `.pre-commit-config.yaml`, `pyproject.toml`
 - **repository**: `multi-agent-coder`
-- **branch**: `origin/chore/github-toolkit`
-- **version**: 0.1.0
-- **commit SHA**: `77c5b53`
-- **current status**: DISCONNECTED_REUSABLE
-- **lifecycle disposition**: DEFER_WITH_BLOCKER
+- **branch**: `fix/continuous-main-integration`
+- **version**: 0.2.0
+- **commit SHA**: Pending PR merge
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
 - **scientific status**: NOT_APPLICABLE
-- **engineering status**: UNMERGED_BRANCH
-- **validation status**: PENDING_INTEGRATION
-- **consumer**: GitHub Actions
-- **gateway/reachability**: NO (not present on `main`)
-- **blocker**: Requires PR creation, merge conflict check against current `tests.yml`, and CI validation
-- **next action**: Rebase against `main`, open PR, verify CI, merge
+- **engineering status**: RECONCILED_AND_INTEGRATED
+- **validation status**: VALIDATED
+- **consumer**: GitHub Actions, developers, open-source contributors
+- **gateway/reachability**: YES
+- **blocker**: NONE
+- **next action**: Merge via PR to `main`
 - **promotion criteria**: All CI workflows pass and adhere to SHA pinning policy
-- **production reachable**: NO
-- **merged to main**: NO
-- **integration receipt**: NONE
-- **supersedes**: Minimal CI
+- **production reachable**: YES
+- **merged to main**: PENDING_PR
+- **integration receipt**: Pending
+- **supersedes**: Minimal unconfigured repository metadata
 - **superseded_by**: NONE
+
+### ASSET-017: Continuous Main Integration Service
+- **asset_id**: ASSET-017
+- **purpose**: Single integration service enforcing PR idempotence, CI observation, guarded merges, main reachability, and receipts
+- **owner/component**: Production Integration
+- **implementation path**: `agent_system/integration.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `fix/continuous-main-integration`
+- **version**: 0.2.0
+- **commit SHA**: Pending PR merge
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: RECONCILED_AND_INTEGRATED
+- **validation status**: VALIDATED (`tests/test_integration_enforcement.py` passing)
+- **consumer**: `agent-pr`, `agent`, CI automation
+- **gateway/reachability**: YES
+- **blocker**: NONE
+- **next action**: Merge via PR to `main`
+- **promotion criteria**: Deterministic test suite passing
+- **production reachable**: YES
+- **merged to main**: PENDING_PR
+- **integration receipt**: Pending
+- **supersedes**: Direct commit to main
+- **superseded_by**: NONE
+
