@@ -19,10 +19,10 @@ providers:
     name: "Local Command Provider"
     provider_id: "local-command"
     tier: free
-    enabled: false
+    enabled: true
     command:
-      - echo
-      - "No command provider configured"
+      - python3
+      - /home/hend/Desktop/multi-agent-coder/tools/disposable_implementer.py
     timeout_seconds: 60
 
   ollama-free:

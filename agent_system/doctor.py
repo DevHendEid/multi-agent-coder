@@ -214,9 +214,18 @@ class Doctor:
                 if not merge_sha:
                     unmerged_completed.append(task_id)
                 else:
+                    repo_dir = self.root
+                    project_name = r.get("project")
+                    if project_name:
+                        try:
+                            project = orch._load_project(project_name)
+                            if project.repo_path.is_dir():
+                                repo_dir = project.repo_path
+                        except Exception:
+                            pass
                     chk = subprocess.run(
                         ["git", "merge-base", "--is-ancestor", merge_sha, "main"],
-                        cwd=str(self.root),
+                        cwd=str(repo_dir),
                         capture_output=True,
                         text=True,
                     )

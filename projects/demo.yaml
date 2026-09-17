@@ -1,11 +1,11 @@
 name: demo
 repository:
-  path: /home/hend/Desktop/agent-demo-repo
+  path: /tmp/mac-e2e-project
 commands:
   install: ''
   analyze: ''
   lint: ''
-  test: ''
+  test: '/home/hend/Desktop/multi-agent-coder/.venv/bin/pytest -q test_calc.py'
   build: ''
   integration_test: ''
 protected_paths:

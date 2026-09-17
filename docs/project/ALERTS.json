@@ -23,5 +23,56 @@
     "resolved": true,
     "resolution": "Condition resolved; underlying defect cleared",
     "resolved_at": "2026-09-17T10:48:14.319338+00:00"
+  },
+  {
+    "alert_id": "ALERT-ORPHAN-ASSET-TEST-ORPHAN",
+    "finding_code": "VALIDATED_ORPHAN",
+    "severity": "BLOCKING",
+    "asset_id": "ASSET-TEST-ORPHAN",
+    "task_id": null,
+    "title": "Validated asset ASSET-TEST-ORPHAN is orphaned without consumer",
+    "message": "Asset 'Controlled Negative Test Orphan' is marked VALIDATED but has no consumer and no explicit non-production disposition.",
+    "evidence": "validation_status=VALIDATED, consumer='', disposition='INTEGRATE'",
+    "detected_at": "2026-09-17T10:50:45.890944+00:00",
+    "current_state": "VALIDATED with disposition INTEGRATE",
+    "required_action": "Assign a valid consumer or set disposition to KEEP_SHADOW, DEFER_WITH_BLOCKER, or ARCHIVE.",
+    "suggested_consumer": null,
+    "blocker": null,
+    "allowed_dispositions": [
+      "KEEP_SHADOW",
+      "DEFER_WITH_BLOCKER",
+      "ARCHIVE"
+    ],
+    "source_paths": [
+      "tools/test_orphan.py"
+    ],
+    "resolved": true,
+    "resolution": "Condition resolved; underlying defect cleared",
+    "resolved_at": "2026-09-17T10:50:46.324138+00:00"
+  },
+  {
+    "alert_id": "ALERT-TOOL-ASSET-TEST-ORPHAN",
+    "finding_code": "UNCLASSIFIED_TOOL",
+    "severity": "WARNING",
+    "asset_id": "ASSET-TEST-ORPHAN",
+    "task_id": null,
+    "title": "Standalone tool ASSET-TEST-ORPHAN is unclassified",
+    "message": "Tool 'Controlled Negative Test Orphan' is not classified under recognized operational roles.",
+    "evidence": "asset_type=STANDALONE_TOOL, purpose='Negative control testing for watchdog lifecycle alert'",
+    "detected_at": "2026-09-17T10:50:45.890944+00:00",
+    "current_state": "asset_type=STANDALONE_TOOL",
+    "required_action": "Classify as CI/verification tool, reusable research tool, dev utility, or archive.",
+    "suggested_consumer": null,
+    "blocker": null,
+    "allowed_dispositions": [
+      "INTEGRATE",
+      "ARCHIVE"
+    ],
+    "source_paths": [
+      "tools/test_orphan.py"
+    ],
+    "resolved": true,
+    "resolution": "Condition resolved; underlying defect cleared",
+    "resolved_at": "2026-09-17T10:50:46.764452+00:00"
   }
 ]
