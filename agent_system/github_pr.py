@@ -11,6 +11,7 @@ from typing import Callable
 
 from .models import TaskStatus
 from .orchestrator import Orchestrator
+from .integration import IntegrationService, IntegrationReceipt, IntegrationError
 
 
 _SAFE_REF = re.compile(r"^[A-Za-z0-9._/-]+$")

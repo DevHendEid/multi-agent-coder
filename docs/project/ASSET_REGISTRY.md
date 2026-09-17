@@ -1,0 +1,433 @@
+# Multi-Agent Coder — Asset Registry
+
+Authoritative catalog of all key assets in the repository.
+
+---
+
+## Asset Index
+
+### ASSET-001: CLI Gateway
+- **asset_id**: ASSET-001
+- **purpose**: Command-line user interface and primary production gateway
+- **owner/component**: Core Orchestrator
+- **implementation path**: `agent_system/cli.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: End users / automation scripts
+- **gateway/reachability**: Gateway Root (Executable `agent`)
+- **blocker**: NONE
+- **next action**: Maintain CLI subcommands
+- **promotion criteria**: Passes unit tests and CLI smoke checks
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-9
+- **supersedes**: Phase 1 CLI
+- **superseded_by**: NONE
+
+### ASSET-002: Orchestrator Engine
+- **asset_id**: ASSET-002
+- **purpose**: Core multi-agent state coordinator
+- **owner/component**: Core Orchestrator
+- **implementation path**: `agent_system/orchestrator.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `agent_system/cli.py`, `agent_system/parallel.py`
+- **gateway/reachability**: Directly callable
+- **blocker**: NONE
+- **next action**: Support dynamic provider benchmark fallback
+- **promotion criteria**: Passes end-to-end task flows
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-9
+- **supersedes**: Phase 1–3 orchestrators
+- **superseded_by**: NONE
+
+### ASSET-003: SQLite State Store
+- **asset_id**: ASSET-003
+- **purpose**: ACID-compliant task and attempt tracking
+- **owner/component**: State Management
+- **implementation path**: `agent_system/state.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `Orchestrator`, `ParallelExecutor`, `GitHubPRManager`, `SystemRecovery`
+- **gateway/reachability**: Reachable via Orchestrator
+- **blocker**: NONE
+- **next action**: Schema migration versioning
+- **promotion criteria**: Database concurrency and persistence tests pass
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-5
+- **supersedes**: In-memory task dicts
+- **superseded_by**: NONE
+
+### ASSET-004: Scope Gate & Sandboxing
+- **asset_id**: ASSET-004
+- **purpose**: Containment validation, symlink escape checks, git baseline protection
+- **owner/component**: Security & Scope
+- **implementation path**: `agent_system/scope.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `Implementer`, `Verifier`, `RepairLoop`
+- **gateway/reachability**: In-line validation gate
+- **blocker**: NONE
+- **next action**: Monitor edge cases in symlink traversal
+- **promotion criteria**: Negative security tests pass
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-3.5
+- **supersedes**: Legacy path check without symlink validation
+- **superseded_by**: NONE
+
+### ASSET-005: Verifier Engine (Zero Shell)
+- **asset_id**: ASSET-005
+- **purpose**: Subprocess execution of verification suites without shell=True
+- **owner/component**: Deterministic Verification
+- **implementation path**: `agent_system/verifier.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `Orchestrator`, `RepairLoop`
+- **gateway/reachability**: In-line verification gate
+- **blocker**: NONE
+- **next action**: Maintain timeout handlers
+- **promotion criteria**: Shell-injection and timeout tests pass
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-3.5
+- **supersedes**: Shell-based verifier
+- **superseded_by**: NONE
+
+### ASSET-006: Independent Multi-Reviewer Panel
+- **asset_id**: ASSET-006
+- **purpose**: Independent review panel with multi-reviewer quorum and human override boundary
+- **owner/component**: Quality & Review
+- **implementation path**: `agent_system/multi_reviewer.py`, `agent_system/reviewer.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `Orchestrator`, `RepairLoop`
+- **gateway/reachability**: In-line review gate
+- **blocker**: NONE
+- **next action**: Add configurable weights to quorum
+- **promotion criteria**: Quorum resolution tests pass
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-4
+- **supersedes**: Single-reviewer architecture
+- **superseded_by**: NONE
+
+### ASSET-007: Bounded Repair Loop
+- **asset_id**: ASSET-007
+- **purpose**: Bounded iterative repair with checkpoints and rollback
+- **owner/component**: Self-Healing & Repair
+- **implementation path**: `agent_system/repair.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `Orchestrator`
+- **gateway/reachability**: Reachable on task failure
+- **blocker**: NONE
+- **next action**: Expand failure context summarization
+- **promotion criteria**: End-to-end repair test passes
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-3.5
+- **supersedes**: Unbounded retry loop
+- **superseded_by**: NONE
+
+### ASSET-008: DAG Dependency Scheduler
+- **asset_id**: ASSET-008
+- **purpose**: Multi-task dependency resolution and topological stage execution
+- **owner/component**: Scheduling & Concurrency
+- **implementation path**: `agent_system/dag.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `Orchestrator`, `ParallelExecutor`
+- **gateway/reachability**: Reachable via CLI multi-task
+- **blocker**: NONE
+- **next action**: Support conditional dynamic branch tasks
+- **promotion criteria**: Cycle detection and stage partition tests pass
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-6
+- **supersedes**: Linear task list
+- **superseded_by**: NONE
+
+### ASSET-009: Parallel Worktree Executor
+- **asset_id**: ASSET-009
+- **purpose**: Isolated concurrent execution across worktrees
+- **owner/component**: Scheduling & Concurrency
+- **implementation path**: `agent_system/parallel.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `agent_system/cli.py`
+- **gateway/reachability**: Reachable via `agent run --parallel`
+- **blocker**: NONE
+- **next action**: Dynamic worker pool scaling
+- **promotion criteria**: Thread-safety and worktree isolation tests pass
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-5
+- **supersedes**: Serial executor
+- **superseded_by**: NONE
+
+### ASSET-010: Model Benchmark Registry
+- **asset_id**: ASSET-010
+- **purpose**: Empirical model qualification and admission tracking
+- **owner/component**: Model Evaluation & Governance
+- **implementation path**: `agent_system/benchmark.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: BENCHMARK_DRIVEN
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `ModelRouter`, `agent benchmark` CLI
+- **gateway/reachability**: In-line routing gate
+- **blocker**: NONE
+- **next action**: Execute live runs on target free providers
+- **promotion criteria**: Admission state machine tests pass
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-7
+- **supersedes**: Static YAML trust declarations
+- **superseded_by**: NONE
+
+### ASSET-011: GitHub PR Integration Tooling
+- **asset_id**: ASSET-011
+- **purpose**: PR management, check verification, and guarded auto-merge
+- **owner/component**: GitHub Integration
+- **implementation path**: `agent_system/github_pr.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `agent-pr` entry point, CI automation
+- **gateway/reachability**: CLI sub-gateway
+- **blocker**: NONE
+- **next action**: Add auto-merge webhook triggers
+- **promotion criteria**: Mock GitHub API test suite passes
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-8
+- **supersedes**: Manual git push/PR
+- **superseded_by**: NONE
+
+### ASSET-012: Doctor Pre-Flight Diagnostics
+- **asset_id**: ASSET-012
+- **purpose**: System binary, routing, model, and state integrity checks
+- **owner/component**: Diagnostics & Hardening
+- **implementation path**: `agent_system/doctor.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `agent-doctor` entry point, CI workflow
+- **gateway/reachability**: CLI sub-gateway / CI gate
+- **blocker**: NONE
+- **next action**: Add network connectivity health probe
+- **promotion criteria**: All doctor checks return PASS in CI
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-9
+- **supersedes**: Ad-hoc assertions
+- **superseded_by**: NONE
+
+### ASSET-013: System Crash Recovery
+- **asset_id**: ASSET-013
+- **purpose**: Recovers dead runs, prunes stale worktrees, validates SQLite integrity
+- **owner/component**: Recovery & Resilience
+- **implementation path**: `agent_system/recovery.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: VALIDATED
+- **consumer**: `agent-recover` entry point
+- **gateway/reachability**: CLI sub-gateway
+- **blocker**: NONE
+- **next action**: Periodic background garbage collection
+- **promotion criteria**: Crash recovery and orphan cleanup tests pass
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-9
+- **supersedes**: Manual worktree cleanup
+- **superseded_by**: NONE
+
+### ASSET-014: Ollama Local Provider (Free Tier)
+- **asset_id**: ASSET-014
+- **purpose**: Free local implementation and review via Ollama
+- **owner/component**: Model Providers
+- **implementation path**: `agent_system/providers/ollama.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: EXPERIMENTAL
+- **lifecycle disposition**: DEFER_WITH_BLOCKER
+- **scientific status**: UNBENCHMARKED
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: EXPERIMENTAL (mock tests pass; live host execution unverified)
+- **consumer**: `ModelRouter` (low/medium tiers)
+- **gateway/reachability**: Configured in routing
+- **blocker**: Live Ollama service availability and benchmark admission tests
+- **next action**: Run benchmark suite against live local Ollama instance
+- **promotion criteria**: 2 consecutive perfect benchmark runs (`VALIDATED`)
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-3.5
+- **supersedes**: None
+- **superseded_by**: NONE
+
+### ASSET-015: Codex CLI Provider (Premium Tier)
+- **asset_id**: ASSET-015
+- **purpose**: Premium code generation and independent review via Codex CLI
+- **owner/component**: Model Providers
+- **implementation path**: `agent_system/providers/codex.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `main`
+- **version**: 0.2.0
+- **commit SHA**: `4c032a5`
+- **current status**: EXPERIMENTAL
+- **lifecycle disposition**: KEEP_SHADOW
+- **scientific status**: EXPERIMENTAL
+- **engineering status**: MERGED_TO_MAIN
+- **validation status**: EXPERIMENTAL (mock tests pass; external API quota exhausted)
+- **consumer**: `ModelRouter` (high/critical tiers)
+- **gateway/reachability**: Configured in routing
+- **blocker**: External API quota / tokens
+- **next action**: Replenish tokens / credentials for live production runs
+- **promotion criteria**: Live API acceptance tests pass
+- **production reachable**: YES
+- **merged to main**: YES
+- **integration receipt**: RECEIPT-PHASE-3.5
+- **supersedes**: Mock premium provider
+- **superseded_by**: NONE
+
+### ASSET-016: GitHub Quality & Security Toolkit
+- **asset_id**: ASSET-016
+- **purpose**: Complete GitHub workflows, templates, dependabot, and pre-commit tooling
+- **owner/component**: CI/CD & Governance
+- **implementation path**: `.github/CODEOWNERS`, `.github/ISSUE_TEMPLATE/*`, `.github/dependabot.yml`, `.github/pull_request_template.md`, `CONTRIBUTING.md`, `.pre-commit-config.yaml`, `pyproject.toml`
+- **repository**: `multi-agent-coder`
+- **branch**: `fix/continuous-main-integration`
+- **version**: 0.2.0
+- **commit SHA**: Pending PR merge
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: RECONCILED_AND_INTEGRATED
+- **validation status**: VALIDATED
+- **consumer**: GitHub Actions, developers, open-source contributors
+- **gateway/reachability**: YES
+- **blocker**: NONE
+- **next action**: Merge via PR to `main`
+- **promotion criteria**: All CI workflows pass and adhere to SHA pinning policy
+- **production reachable**: YES
+- **merged to main**: PENDING_PR
+- **integration receipt**: Pending
+- **supersedes**: Minimal unconfigured repository metadata
+- **superseded_by**: NONE
+
+### ASSET-017: Continuous Main Integration Service
+- **asset_id**: ASSET-017
+- **purpose**: Single integration service enforcing PR idempotence, CI observation, guarded merges, main reachability, and receipts
+- **owner/component**: Production Integration
+- **implementation path**: `agent_system/integration.py`
+- **repository**: `multi-agent-coder`
+- **branch**: `fix/continuous-main-integration`
+- **version**: 0.2.0
+- **commit SHA**: Pending PR merge
+- **current status**: PRODUCTION_ACTIVE
+- **lifecycle disposition**: INTEGRATE
+- **scientific status**: NOT_APPLICABLE
+- **engineering status**: RECONCILED_AND_INTEGRATED
+- **validation status**: VALIDATED (`tests/test_integration_enforcement.py` passing)
+- **consumer**: `agent-pr`, `agent`, CI automation
+- **gateway/reachability**: YES
+- **blocker**: NONE
+- **next action**: Merge via PR to `main`
+- **promotion criteria**: Deterministic test suite passing
+- **production reachable**: YES
+- **merged to main**: PENDING_PR
+- **integration receipt**: Pending
+- **supersedes**: Direct commit to main
+- **superseded_by**: NONE
+
