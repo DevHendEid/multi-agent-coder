@@ -236,6 +236,109 @@ def cmd_resume(args):
     else: print(f"Unknown state: {current_status}")
 
 
+def cmd_watchdog(args):
+    root = find_root()
+    from .watchdog import IntegrationWatchdog
+    watchdog = IntegrationWatchdog(root)
+    unresolved = watchdog.run()
+    blocking = [a for a in unresolved if a.severity == "BLOCKING"]
+    high = [a for a in unresolved if a.severity == "HIGH"]
+    warnings = [a for a in unresolved if a.severity == "WARNING"]
+    metrics = watchdog.registry.health_metrics
+    print(f"Watchdog scan complete: {len(unresolved)} active alerts (BLOCKING={len(blocking)}, HIGH={len(high)}, WARNING={len(warnings)})")
+    if metrics:
+        print(f"Validated orphans: {metrics.validated_orphan_count}")
+    if unresolved:
+        for a in unresolved:
+            print(f"  [{a.severity}] {a.finding_code}: {a.title}")
+    if blocking:
+        sys.exit(1)
+
+
+def cmd_alerts(args):
+    root = find_root()
+    from .watchdog import IntegrationWatchdog
+    watchdog = IntegrationWatchdog(root)
+    watchdog.registry.load()
+    alerts = list(watchdog.registry.alerts.values())
+    if not getattr(args, "all", False):
+        alerts = [a for a in alerts if not a.resolved]
+    if getattr(args, "severity", None):
+        alerts = [a for a in alerts if a.severity == args.severity.upper()]
+    if not alerts:
+        print("No matching alerts.")
+        return
+    for a in alerts:
+        status_str = "RESOLVED" if a.resolved else "ACTIVE"
+        print(f"[{status_str}] [{a.severity}] {a.finding_code} ({a.alert_id}): {a.title}")
+        print(f"  Message: {a.message}")
+        print(f"  Required Action: {a.required_action}")
+
+
+def cmd_queue(args):
+    root = find_root()
+    from .watchdog import IntegrationWatchdog
+    watchdog = IntegrationWatchdog(root)
+    watchdog.registry.load()
+    items = [q for q in watchdog.registry.promotion_queue.values() if q.status == "ACTIVE"]
+    if not items:
+        print("Promotion/Integration queue is empty.")
+        return
+    for q in items:
+        print(f"[{q.severity}] {q.queue_id} (Asset: {q.asset_id}): {q.issue}")
+        print(f"  Required Action: {q.required_action}")
+        print(f"  Allowed Dispositions: {', '.join(q.allowed_dispositions)}")
+
+
+def cmd_dashboard(args):
+    root = find_root()
+    from .watchdog import IntegrationWatchdog
+    watchdog = IntegrationWatchdog(root)
+    dashboard_text = watchdog.generate_dashboard()
+    print(dashboard_text)
+    if getattr(args, "save", False):
+        out_path = root / "docs" / "project" / "INTEGRATION_DASHBOARD.md"
+        out_path.write_text(dashboard_text)
+        print(f"\nDashboard saved to {out_path}")
+
+
+def cmd_phase_closeout(args):
+    root = find_root()
+    from .watchdog import IntegrationWatchdog
+    watchdog = IntegrationWatchdog(root)
+    passed, failures = watchdog.check_phase_closeout()
+    if passed:
+        print("PASS: Repository satisfies all phase closeout invariants.")
+    else:
+        print("FAIL: Phase closeout rejected:")
+        for f in failures:
+            print(f"  - {f}")
+        sys.exit(1)
+
+
+def main_watchdog():
+    p = argparse.ArgumentParser(prog="agent-watchdog", description="Run integration watchdog scan")
+    cmd_watchdog(p.parse_args())
+
+
+def main_alerts():
+    p = argparse.ArgumentParser(prog="agent-alerts", description="Inspect governance lifecycle alerts")
+    p.add_argument("--severity", choices=["INFO", "WARNING", "HIGH", "BLOCKING"])
+    p.add_argument("--all", action="store_true")
+    cmd_alerts(p.parse_args())
+
+
+def main_queue():
+    p = argparse.ArgumentParser(prog="agent-promotion-queue", description="Display promotion and integration queue")
+    cmd_queue(p.parse_args())
+
+
+def main_dashboard():
+    p = argparse.ArgumentParser(prog="agent-dashboard")
+    p.add_argument("--save", action="store_true")
+    cmd_dashboard(p.parse_args())
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="agent", description="Multi-Agent Coder Foundation"); sub = p.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init-project"); init.add_argument("--name", required=True); init.add_argument("--repo", required=True); init.add_argument("--force", action="store_true"); init.set_defaults(func=cmd_init_project)
@@ -253,6 +356,11 @@ def build_parser():
     models = sub.add_parser("models"); models.set_defaults(func=cmd_models)
     benchmark = sub.add_parser("benchmark"); benchmark.add_argument("provider_id"); benchmark.add_argument("--repeat", type=int, default=1, choices=range(1, 11)); benchmark.set_defaults(func=cmd_benchmark)
     benchmarks = sub.add_parser("benchmarks"); benchmarks.set_defaults(func=cmd_benchmarks)
+    watchdog = sub.add_parser("watchdog"); watchdog.set_defaults(func=cmd_watchdog)
+    alerts = sub.add_parser("alerts"); alerts.add_argument("--severity", choices=["INFO", "WARNING", "HIGH", "BLOCKING"]); alerts.add_argument("--all", action="store_true"); alerts.set_defaults(func=cmd_alerts)
+    queue = sub.add_parser("queue"); queue.set_defaults(func=cmd_queue)
+    dashboard = sub.add_parser("dashboard"); dashboard.add_argument("--save", action="store_true"); dashboard.set_defaults(func=cmd_dashboard)
+    closeout = sub.add_parser("phase-closeout"); closeout.set_defaults(func=cmd_phase_closeout)
     return p
 
 
@@ -262,3 +370,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

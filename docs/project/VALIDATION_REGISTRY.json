@@ -1,0 +1,106 @@
+[
+  {
+    "validation_id": "VAL-001",
+    "target_asset_id": "ASSET-001",
+    "suite_name": "CLI Smoke Tests",
+    "validation_type": "DETERMINISTIC_CLI",
+    "evidence_path": "tests/test_cli.py",
+    "status": "PASS",
+    "executed_at": "2026-09-17T12:00:00Z",
+    "receipt_id": "RECEIPT-PHASE-9",
+    "details": {
+      "exit_code": 0
+    }
+  },
+  {
+    "validation_id": "VAL-002",
+    "target_asset_id": "ASSET-005",
+    "suite_name": "Zero Shell Subprocess Security",
+    "validation_type": "SECURITY_AUDIT",
+    "evidence_path": "tests/test_phase35_remediation.py",
+    "status": "PASS",
+    "executed_at": "2026-09-17T12:00:00Z",
+    "receipt_id": "RECEIPT-PHASE-3.5",
+    "details": {
+      "zero_shell": true
+    }
+  },
+  {
+    "validation_id": "VAL-003",
+    "target_asset_id": "ASSET-006",
+    "suite_name": "Independent Multi-Reviewer Quorum",
+    "validation_type": "UNIT_TEST",
+    "evidence_path": "tests/test_multi_reviewer.py",
+    "status": "PASS",
+    "executed_at": "2026-09-17T12:00:00Z",
+    "receipt_id": "RECEIPT-PHASE-4",
+    "details": {
+      "tests_passed": 6
+    }
+  },
+  {
+    "validation_id": "VAL-004",
+    "target_asset_id": "ASSET-008",
+    "suite_name": "DAG Dependency Cycles & Scheduling",
+    "validation_type": "UNIT_TEST",
+    "evidence_path": "tests/test_dag.py",
+    "status": "PASS",
+    "executed_at": "2026-09-17T12:00:00Z",
+    "receipt_id": "RECEIPT-PHASE-6",
+    "details": {
+      "tests_passed": 7
+    }
+  },
+  {
+    "validation_id": "VAL-005",
+    "target_asset_id": "ASSET-009",
+    "suite_name": "Parallel Worktree Concurrency & Leases",
+    "validation_type": "UNIT_TEST",
+    "evidence_path": "tests/test_parallel.py",
+    "status": "PASS",
+    "executed_at": "2026-09-17T12:00:00Z",
+    "receipt_id": "RECEIPT-PHASE-5",
+    "details": {
+      "tests_passed": 6
+    }
+  },
+  {
+    "validation_id": "VAL-006",
+    "target_asset_id": "ASSET-010",
+    "suite_name": "Model Benchmark Admission State Machine",
+    "validation_type": "UNIT_TEST",
+    "evidence_path": "tests/test_benchmark_registry.py",
+    "status": "PASS",
+    "executed_at": "2026-09-17T12:00:00Z",
+    "receipt_id": "RECEIPT-PHASE-7",
+    "details": {
+      "tests_passed": 8
+    }
+  },
+  {
+    "validation_id": "VAL-007",
+    "target_asset_id": "ASSET-012",
+    "suite_name": "Doctor Diagnostics & Integrity",
+    "validation_type": "SYSTEM_DIAGNOSTIC",
+    "evidence_path": "tests/test_production_hardening.py",
+    "status": "PASS",
+    "executed_at": "2026-09-17T12:00:00Z",
+    "receipt_id": "RECEIPT-PHASE-9",
+    "details": {
+      "all_checks_passed": true
+    }
+  },
+  {
+    "validation_id": "VAL-008",
+    "target_asset_id": "ASSET-017",
+    "suite_name": "Continuous Main Integration Policy Enforcement",
+    "validation_type": "REGRESSION_TEST",
+    "evidence_path": "tests/test_integration_enforcement.py",
+    "status": "PASS",
+    "executed_at": "2026-09-17T12:00:00Z",
+    "receipt_id": "RECEIPT-INTEGRATION-POLICY-001",
+    "details": {
+      "tests_passed": 10
+    }
+  }
+]

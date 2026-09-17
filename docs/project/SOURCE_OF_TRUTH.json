@@ -1,0 +1,26 @@
+{
+  "repository": "multi-agent-coder",
+  "authoritative_branch": "main",
+  "active_commit_sha": "24fe0b23d347024a1d8874c5648a2b1cb0561c80",
+  "governance_status": "STILL_AUTHORITATIVE",
+  "document_taxonomy": {
+    "STILL_AUTHORITATIVE": "Current binding operational standard",
+    "PARTIALLY_SUPERSEDED": "Contains historically valid context partially superseded",
+    "SUPERSEDED": "Deprecated by a versioned successor",
+    "HISTORICAL": "Point-in-time milestone report"
+  },
+  "merged_phases": [
+    "PHASE-1",
+    "PHASE-2",
+    "PHASE-3",
+    "PHASE-3.5",
+    "PHASE-4",
+    "PHASE-5",
+    "PHASE-6",
+    "PHASE-7",
+    "PHASE-8",
+    "PHASE-9",
+    "CONTINUOUS-MAIN-INTEGRATION"
+  ],
+  "last_updated": "2026-09-17T12:00:00Z"
+}

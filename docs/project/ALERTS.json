@@ -1,0 +1,27 @@
+[
+  {
+    "alert_id": "ALERT-RESEARCH-PROD-ASSET-015",
+    "finding_code": "RESEARCH_CODE_PRODUCTION_REACHABLE",
+    "severity": "BLOCKING",
+    "asset_id": "ASSET-015",
+    "task_id": null,
+    "title": "Research asset ASSET-015 is production reachable",
+    "message": "Asset 'Codex CLI Provider (Premium Tier)' is designated research/exploratory but marked production reachable.",
+    "evidence": "scientific_status=EXPERIMENTAL, asset_type=MODEL_PROVIDER, production_reachable=True",
+    "detected_at": "2026-09-17T10:47:43.859705+00:00",
+    "current_state": "Research/exploratory code marked production_reachable",
+    "required_action": "Disconnect asset from production import paths or gate behind non-production flags.",
+    "suggested_consumer": null,
+    "blocker": null,
+    "allowed_dispositions": [
+      "KEEP_SHADOW",
+      "ARCHIVE"
+    ],
+    "source_paths": [
+      "agent_system/providers/codex_provider.py"
+    ],
+    "resolved": true,
+    "resolution": "Condition resolved; underlying defect cleared",
+    "resolved_at": "2026-09-17T10:48:14.319338+00:00"
+  }
+]

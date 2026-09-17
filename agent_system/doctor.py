@@ -33,6 +33,7 @@ class Doctor:
         checks.append(self._state_db_check())
         checks.extend(self._task_checks())
         checks.extend(self._integration_checks())
+        checks.extend(self._governance_checks())
         return checks
 
     @staticmethod
@@ -239,6 +240,63 @@ class Doctor:
             out.append(CheckResult("integration:ready_for_pr", "WARN", f"READY_FOR_PR tasks without PR or blocker: {', '.join(unresolved_ready_for_pr)}"))
         else:
             out.append(CheckResult("integration:ready_for_pr", "PASS", "no unhandled READY_FOR_PR tasks"))
+
+        return out
+
+    def _governance_checks(self) -> list[CheckResult]:
+        out: list[CheckResult] = []
+        gov_dir = self.root / "docs" / "project"
+
+        from .governance import GovernanceRegistry
+        from .watchdog import IntegrationWatchdog
+
+        registry = GovernanceRegistry(self.root)
+        try:
+            registry.load()
+            required_files = [
+                "SOURCE_OF_TRUTH.json",
+                "ASSET_REGISTRY.json",
+                "VALIDATION_REGISTRY.json",
+                "PROMOTION_QUEUE.json",
+                "PROJECT_HEALTH.json",
+                "ALERTS.json",
+            ]
+            missing_files = [f for f in required_files if not (gov_dir / f).exists()]
+            if missing_files:
+                out.append(CheckResult("governance:registries", "FAIL", f"missing registries: {', '.join(missing_files)}"))
+            else:
+                out.append(CheckResult("governance:registries", "PASS", f"all {len(required_files)} governance registries valid ({len(registry.assets)} assets)"))
+        except Exception as exc:
+            out.append(CheckResult("governance:registries", "FAIL", f"failed loading registries: {exc}"))
+            return out
+
+        try:
+            watchdog = IntegrationWatchdog(self.root)
+            active_alerts = watchdog.run()
+            out.append(CheckResult("governance:watchdog", "PASS", f"watchdog scan completed ({len(active_alerts)} active alerts)"))
+        except Exception as exc:
+            out.append(CheckResult("governance:watchdog", "FAIL", f"watchdog execution failed: {exc}"))
+            return out
+
+        metrics = watchdog.registry.health_metrics
+        orphan_count = metrics.validated_orphan_count if metrics else 0
+        if orphan_count > 0:
+            out.append(CheckResult("governance:validated_orphans", "FAIL", f"{orphan_count} validated orphans detected"))
+        else:
+            out.append(CheckResult("governance:validated_orphans", "PASS", "zero validated orphans"))
+
+        queue_count = len(watchdog.registry.promotion_queue)
+        out.append(CheckResult("governance:promotion_queue", "PASS", f"{queue_count} promotion queue items tracked"))
+
+        unresolved_blocking = [a.alert_id for a in watchdog.registry.alerts.values() if not a.resolved and a.severity == "BLOCKING"]
+        unresolved_high = [a.alert_id for a in watchdog.registry.alerts.values() if not a.resolved and a.severity == "HIGH"]
+
+        if unresolved_blocking:
+            out.append(CheckResult("governance:alerts", "FAIL", f"unresolved BLOCKING alerts: {', '.join(unresolved_blocking)}"))
+        elif unresolved_high:
+            out.append(CheckResult("governance:alerts", "WARN", f"unresolved HIGH alerts: {', '.join(unresolved_high)}"))
+        else:
+            out.append(CheckResult("governance:alerts", "PASS", "zero unresolved BLOCKING or HIGH alerts"))
 
         return out
 
