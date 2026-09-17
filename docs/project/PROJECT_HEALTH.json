@@ -1,0 +1,17 @@
+{
+  "total_assets": 19,
+  "production_connected_assets": 19,
+  "shadow_connected_assets": 2,
+  "validated_assets": 19,
+  "promotion_pending_assets": 0,
+  "deferred_assets": 0,
+  "archived_assets": 0,
+  "orphan_count": 0,
+  "validated_orphan_count": 0,
+  "stale_superseded_references": 0,
+  "assets_missing_consumers": 0,
+  "assets_missing_validation_receipts": 0,
+  "unresolved_blocking_alerts": 0,
+  "unresolved_high_alerts": 0,
+  "calculated_at": "2026-09-17T10:48:14.771988+00:00"
+}

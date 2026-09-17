@@ -22,6 +22,10 @@ agent = "agent_system.cli:main"
 agent-pr = "agent_system.github_pr:main"
 agent-doctor = "agent_system.doctor:main"
 agent-recover = "agent_system.recovery:main"
+agent-watchdog = "agent_system.cli:main_watchdog"
+agent-alerts = "agent_system.cli:main_alerts"
+agent-dashboard = "agent_system.cli:main_dashboard"
+agent-promotion-queue = "agent_system.cli:main_queue"
 
 [tool.setuptools.packages.find]
 where = ["."]
