@@ -103,3 +103,17 @@ def test_command_provider_does_not_persist_full_argv(tmp_path: Path):
     assert "command" not in (result.metadata or {})
     assert result.metadata["command_redacted"] is True
     assert result.metadata["executable"]
+
+
+def test_production_routing_excludes_disposable_implementer():
+    import yaml
+
+    from agent_system.providers.registry import ProviderRegistry
+
+    root = Path(__file__).resolve().parents[1]
+    registry = ProviderRegistry(root / "config" / "models.yaml")
+    routing = yaml.safe_load((root / "config" / "routing.yaml").read_text())
+    assert registry.get("local-command") is None
+    for providers in routing.values():
+        assert "local-command" not in providers
+        assert all(registry.get(provider_id) is not None for provider_id in providers)
