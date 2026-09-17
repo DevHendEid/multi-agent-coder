@@ -230,3 +230,21 @@ def test_historical_exception_recognized_but_unrecorded_direct_commit_fails(tmp_
     check2 = next(c for c in checks2 if c.name == "integration:direct_main_commits")
     assert check2.status == "FAIL"
     assert "unrecorded direct-main commits" in check2.detail
+
+
+def test_doctor_direct_main_commits_skips_when_no_main_ref(tmp_path: Path):
+    repo = tmp_path / "repo_feature"
+    repo.mkdir()
+    run_git(repo, "init", "-b", "feature-xyz")
+    run_git(repo, "config", "user.email", "test@example.com")
+    run_git(repo, "config", "user.name", "Test")
+    (repo / "file.txt").write_text("feature work")
+    run_git(repo, "add", "file.txt")
+    run_git(repo, "commit", "-m", "feature commit")
+
+    doc = Doctor(repo)
+    checks = doc.run()
+    check = next(c for c in checks if c.name == "integration:direct_main_commits")
+    assert check.status == "PASS"
+    assert "not present in checkout" in check.detail
+

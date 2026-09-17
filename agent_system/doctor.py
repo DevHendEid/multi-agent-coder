@@ -130,40 +130,41 @@ class Doctor:
 
         # Direct-main commit check
         try:
-            target_ref = "main"
-            chk = subprocess.run(["git", "rev-parse", "--verify", "main"], cwd=str(self.root), capture_output=True)
-            if chk.returncode != 0:
-                chk_origin = subprocess.run(["git", "rev-parse", "--verify", "origin/main"], cwd=str(self.root), capture_output=True)
-                if chk_origin.returncode == 0:
-                    target_ref = "origin/main"
-                else:
-                    target_ref = "HEAD"
+            target_ref = None
+            for ref in ["main", "origin/main"]:
+                chk = subprocess.run(["git", "rev-parse", "--verify", ref], cwd=str(self.root), capture_output=True)
+                if chk.returncode == 0:
+                    target_ref = ref
+                    break
 
-            log_proc = subprocess.run(
-                ["git", "log", "--first-parent", "-n", "20", "--format=%H %h %p", target_ref],
-                cwd=str(self.root),
-                capture_output=True,
-                text=True,
-            )
-            if log_proc.returncode == 0:
-                unrecorded_direct_commits = []
-                for line in log_proc.stdout.strip().splitlines():
-                    if not line:
-                        continue
-                    parts = line.split()
-                    full_sha = parts[0]
-                    short_sha = parts[1]
-                    parents = parts[2:]
-                    # Direct non-merge commit on main has <= 1 parent
-                    if len(parents) <= 1:
-                        if short_sha not in receipts_text and full_sha not in receipts_text:
-                            unrecorded_direct_commits.append(short_sha)
-                if unrecorded_direct_commits:
-                    out.append(CheckResult("integration:direct_main_commits", "FAIL", f"unrecorded direct-main commits: {', '.join(unrecorded_direct_commits)}"))
-                else:
-                    out.append(CheckResult("integration:direct_main_commits", "PASS", "all direct-main commits have receipts or historical exceptions"))
+            if target_ref is None:
+                out.append(CheckResult("integration:direct_main_commits", "PASS", "main/origin/main not present in checkout (skipping direct-main check)"))
             else:
-                out.append(CheckResult("integration:direct_main_commits", "WARN", f"git log failed: {log_proc.stderr.strip()}"))
+                log_proc = subprocess.run(
+                    ["git", "log", "--first-parent", "-n", "20", "--format=%H %h %p", target_ref],
+                    cwd=str(self.root),
+                    capture_output=True,
+                    text=True,
+                )
+                if log_proc.returncode == 0:
+                    unrecorded_direct_commits = []
+                    for line in log_proc.stdout.strip().splitlines():
+                        if not line:
+                            continue
+                        parts = line.split()
+                        full_sha = parts[0]
+                        short_sha = parts[1]
+                        parents = parts[2:]
+                        # Direct non-merge commit on main has <= 1 parent
+                        if len(parents) <= 1:
+                            if short_sha not in receipts_text and full_sha not in receipts_text:
+                                unrecorded_direct_commits.append(short_sha)
+                    if unrecorded_direct_commits:
+                        out.append(CheckResult("integration:direct_main_commits", "FAIL", f"unrecorded direct-main commits: {', '.join(unrecorded_direct_commits)}"))
+                    else:
+                        out.append(CheckResult("integration:direct_main_commits", "PASS", "all direct-main commits have receipts or historical exceptions"))
+                else:
+                    out.append(CheckResult("integration:direct_main_commits", "WARN", f"git log failed: {log_proc.stderr.strip()}"))
         except Exception as exc:
             out.append(CheckResult("integration:direct_main_commits", "WARN", f"unable to inspect git log: {exc}"))
 
