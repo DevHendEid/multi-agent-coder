@@ -227,6 +227,8 @@ class OllamaProvider(ModelProvider):
             text = text.split("```diff", 1)[1].split("```", 1)[0].strip()
         elif "```patch" in text:
             text = text.split("```patch", 1)[1].split("```", 1)[0].strip()
+        elif text.startswith("```"):
+            text = text.split("```", 1)[1].split("```", 1)[0].strip()
         if text.startswith("diff --git") or text.startswith("--- "):
             return text + ("\n" if not text.endswith("\n") else "")
         pos = text.find("diff --git")
@@ -275,6 +277,59 @@ class OllamaProvider(ModelProvider):
                 raise ValueError(f"patch escapes worktree: {raw}") from exc
 
     @staticmethod
+    def _normalize_patch(patch: str, worktree: Path) -> str:
+        """Correct hunk header counts that disagree with the hunk body.
+
+        Some models emit plausible but inaccurate line counts in ``@@``
+        headers. This helper recomputes the old/new counts from the hunk
+        body so that ``git apply --check`` can accept patches whose
+        structural intent is correct. It does not alter the patch body.
+        """
+        import re as _re
+
+        if not patch or "\n" not in patch:
+            return patch
+
+        lines = patch.split("\n")
+        out_lines: list[str] = []
+        idx = 0
+
+        while idx < len(lines):
+            line = lines[idx]
+            m = _re.match(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)$", line)
+            if not m:
+                out_lines.append(line)
+                idx += 1
+                continue
+
+            old_start = int(m.group(1))
+            new_start = int(m.group(3))
+            suffix = m.group(5) or ""
+
+            body: list[str] = []
+            j = idx + 1
+            while j < len(lines):
+                next_line = lines[j]
+                if next_line.startswith("diff --git ") or _re.match(r"^@@ -(\d+)", next_line) or next_line.startswith("--- ") or next_line.startswith("+++ "):
+                    break
+                body.append(next_line)
+                j += 1
+
+            context = sum(1 for b in body if b.startswith(" "))
+            deletions = sum(1 for b in body if b.startswith("-"))
+            additions = sum(1 for b in body if b.startswith("+"))
+
+            corrected_old = context + deletions
+            corrected_new = context + additions
+
+            out_lines.append(f"@@ -{old_start},{corrected_old} +{new_start},{corrected_new} @@{suffix}")
+            out_lines.extend(body)
+            idx = j
+
+        return "\n".join(out_lines)
+
+
+    @staticmethod
     def _apply_patch(patch: str, worktree: Path) -> None:
         check = subprocess.run(
             ["git", "apply", "--check", "-"],
@@ -284,18 +339,68 @@ class OllamaProvider(ModelProvider):
             capture_output=True,
             timeout=30,
         )
-        if check.returncode != 0:
-            raise ValueError(check.stderr.strip() or "git apply --check failed")
-        applied = subprocess.run(
-            ["git", "apply", "-"],
+        if check.returncode == 0:
+            applied = subprocess.run(
+                ["git", "apply", "-"],
+                cwd=str(worktree),
+                input=patch,
+                text=True,
+                capture_output=True,
+                timeout=30,
+            )
+            if applied.returncode != 0:
+                raise ValueError(applied.stderr.strip() or "git apply failed")
+            return
+
+        normalized = OllamaProvider._normalize_patch(patch, worktree)
+        if normalized != patch:
+            check = subprocess.run(
+                ["git", "apply", "--check", "-"],
+                cwd=str(worktree),
+                input=normalized,
+                text=True,
+                capture_output=True,
+                timeout=30,
+            )
+            if check.returncode == 0:
+                applied = subprocess.run(
+                    ["git", "apply", "-"],
+                    cwd=str(worktree),
+                    input=normalized,
+                    text=True,
+                    capture_output=True,
+                    timeout=30,
+                )
+                if applied.returncode != 0:
+                    raise ValueError(applied.stderr.strip() or "git apply failed")
+                return
+
+        patch_env = dict(os.environ)
+        patch_env.setdefault("PIPE_OUTPUT", "1")
+        dry_run = subprocess.run(
+            ["patch", "--dry-run", "--no-backup-if-mismatch", "-p1", "-i", "-"],
             cwd=str(worktree),
             input=patch,
             text=True,
             capture_output=True,
             timeout=30,
+            env=patch_env,
         )
-        if applied.returncode != 0:
-            raise ValueError(applied.stderr.strip() or "git apply failed")
+        if dry_run.returncode == 0:
+            applied = subprocess.run(
+                ["patch", "--no-backup-if-mismatch", "-p1", "-i", "-"],
+                cwd=str(worktree),
+                input=patch,
+                text=True,
+                capture_output=True,
+                timeout=30,
+                env=patch_env,
+            )
+            if applied.returncode != 0:
+                raise ValueError(applied.stderr.strip() or "patch apply failed")
+            return
+
+        raise ValueError(check.stderr.strip() or "Patch rejected: git apply --check failed and patch --dry-run did not accept the patch")
 
     @staticmethod
     def _detect_modified_files(worktree: Path) -> list[str]:

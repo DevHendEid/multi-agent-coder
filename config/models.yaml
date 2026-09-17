@@ -19,7 +19,8 @@ providers:
     name: "Local Command Provider"
     provider_id: "local-command"
     tier: free
-    enabled: true
+    # Disposable E2E fixture: never enable in production routing.
+    enabled: false
     command:
       - python3
       - /home/hend/Desktop/multi-agent-coder/tools/disposable_implementer.py
