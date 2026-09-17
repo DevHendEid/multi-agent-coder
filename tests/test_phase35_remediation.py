@@ -1,5 +1,6 @@
 from pathlib import Path
 import subprocess
+import sys
 
 from agent_system.cli import build_reviewer
 from agent_system.context import ContextBuilder
@@ -67,7 +68,7 @@ def test_repair_e2e_reverifies_and_keeps_original_repo(tmp_path):
     subprocess.run(["git","-C",str(repo),"config","user.email","t@t"],check=True); subprocess.run(["git","-C",str(repo),"config","user.name","T"],check=True)
     (repo/"calc.py").write_text("def add(a,b):\n    return a-b\n"); subprocess.run(["git","-C",str(repo),"add","."],check=True); subprocess.run(["git","-C",str(repo),"commit","-m","init"],check=True,capture_output=True)
     wt=tmp_path/"wt"; subprocess.run(["git","-C",str(repo),"worktree","add","-b","agent/r",str(wt),"HEAD"],check=True,capture_output=True); (wt/"calc.py").write_text("def add(a,b):\n    return a*b\n")
-    projects=tmp_path/"projects"; projects.mkdir(); (projects/"p.yaml").write_text(f'name: p\nrepository:\n  path: {repo}\ncommands:\n  test: "python -B -c \'import calc; assert calc.add(2,3)==5\'"\nprotected_paths: []\nrisk_rules: {{}}\n')
+    projects=tmp_path/"projects"; projects.mkdir(); (projects/"p.yaml").write_text(f'name: p\nrepository:\n  path: {repo}\ncommands:\n  test: "{sys.executable} -B -c \'import calc; assert calc.add(2,3)==5\'"\nprotected_paths: []\nrisk_rules: {{}}\n')
     orch=Orchestrator(tmp_path); orch.state.create_task("TASK-R","p","fix","low"); orch.state.update_task("TASK-R",status=TaskStatus.REVIEWING.value,branch="agent/r",worktree=str(wt),provider_id="repair")
     class Repair(ModelProvider):
         def __init__(self): super().__init__("repair","repair",ProviderTier.FREE,{})
