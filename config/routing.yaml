@@ -1,8 +1,10 @@
 low:
+  - local-command
   - ollama-free
   - codex-real
 
 medium:
+  - local-command
   - ollama-free
   - codex-real
 

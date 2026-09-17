@@ -1,1 +1,21 @@
-[]
+[
+  {
+    "queue_id": "QUEUE-ASSET-TEST-ORPHAN",
+    "asset_id": "ASSET-TEST-ORPHAN",
+    "task_id": null,
+    "issue": "Validated asset ASSET-TEST-ORPHAN is orphaned without consumer",
+    "severity": "BLOCKING",
+    "required_action": "Assign a valid consumer or set disposition to KEEP_SHADOW, DEFER_WITH_BLOCKER, or ARCHIVE.",
+    "suggested_consumer": null,
+    "blocker": null,
+    "allowed_dispositions": [
+      "KEEP_SHADOW",
+      "DEFER_WITH_BLOCKER",
+      "ARCHIVE"
+    ],
+    "created_at": "2026-09-17T10:50:45.894029+00:00",
+    "updated_at": "2026-09-17T10:50:46.324138+00:00",
+    "status": "RESOLVED",
+    "source_alert_id": "ALERT-ORPHAN-ASSET-TEST-ORPHAN"
+  }
+]
