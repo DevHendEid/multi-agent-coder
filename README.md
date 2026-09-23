@@ -71,6 +71,24 @@ agent models
 
 Benchmark admission is tied to the exact provider/model identity. A new model version does not inherit an older model's benchmark status.
 
+## Model control UI
+
+```bash
+pip install -e '.[ui]'
+agent-ui                           # http://127.0.0.1:8765 (run from the repo root)
+```
+
+A local admin page for `config/models.yaml` and `config/routing.yaml`:
+
+- **Providers**: id, model, role, tier, trust, benchmark status, timeout and enabled flag. Test availability and run `agent benchmark <id>` from the page. Secrets (keys, tokens, `env` blocks, URL credentials) are redacted.
+- **Routing**: set the provider order for each risk level. The first available provider is primary and the rest are fallbacks, as in `ModelRouter`. Reviewers can be enabled or disabled.
+
+Saves are validated with the same rules as `agent-doctor`. The UI also rejects unknown, disabled or reviewer-only providers in implementer routing, and any risk level left empty. Each save is atomic, backs up the previous files to `.agent-system/config-backups/`, and is refused if the files changed on disk since they were loaded.
+
+Formatting: toggling a reviewer rewrites only its `enabled:` line in `models.yaml`, so comments stay. `routing.yaml` is regenerated, keeping its leading comment block but not comments elsewhere in the file.
+
+V1 has no authentication. It binds only to loopback addresses, and it rejects requests with non-loopback `Host` headers and POSTs without the `X-Agent-UI` header.
+
 ## Pull request publication
 
 Requires GitHub CLI (`gh`) to be installed and authenticated for the target repository.

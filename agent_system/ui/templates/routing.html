@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Routing{% endblock %}
+{% block content %}
+<h2>Routing</h2>
+<p class="lead">
+  Implementer routing is <code>config/routing.yaml</code>. For each risk level, the router picks the first available provider and uses the rest, in order, as fallbacks.
+  Reviewers aren't routed by risk: every enabled, available reviewer joins the review panel.
+</p>
+
+<div id="errors" class="panel errors" hidden><strong>Not saved</strong><ul></ul></div>
+
+<div class="panel">
+  <h2>Implementer routing &amp; fallback order</h2>
+  <p class="lead">Only enabled implementer providers can be routed.</p>
+  <div id="levels"></div>
+</div>
+
+<div class="panel">
+  <h2>Reviewer routing</h2>
+  <p class="lead">Changes the <code>enabled</code> flag in <code>config/models.yaml</code>. That line is edited in place, so comments stay.</p>
+  <div id="reviewers"></div>
+</div>
+
+<div class="row">
+  <button type="button" class="primary" id="save">Save validated config</button>
+  <button type="button" id="reload">Reload current config</button>
+  <span id="status" class="muted"></span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>code.pid { display: inline-block; min-width: 9em; } .chip.pos { min-width: 6.5em; text-align: center; }</style>
+<script>
+  let state = null;  // {version, routing, implementers, reviewers}
+
+  function el(tag, text, cls) {
+    const e = document.createElement(tag);
+    if (text !== undefined) e.textContent = text;
+    if (cls) e.className = cls;
+    return e;
+  }
+
+  function status(text, cls) {
+    const s = document.getElementById("status");
+    s.textContent = text;
+    s.className = cls || "muted";
+  }
+
+  function showErrors(errors) {
+    const box = document.getElementById("errors");
+    const ul = box.querySelector("ul");
+    ul.textContent = "";
+    (errors || []).forEach((e) => ul.appendChild(el("li", e)));
+    box.hidden = !errors || errors.length === 0;
+  }
+
+  function renderLevels() {
+    const root = document.getElementById("levels");
+    root.textContent = "";
+    const table = el("table");
+    const head = el("tr");
+    ["Risk", "Provider order (primary → fallbacks)", "Add"].forEach((h) => head.appendChild(el("th", h)));
+    table.appendChild(el("thead")).appendChild(head);
+    const body = el("tbody");
+    state.risk_levels.forEach((level) => {
+      const list = state.routing[level] || [];
+      const tr = el("tr");
+      tr.appendChild(el("td", level)).className = "mono";
+      const cell = el("td");
+      list.forEach((pid, i) => {
+        const item = el("div", undefined, "row");
+        item.appendChild(el("span", i === 0 ? "primary" : `fallback ${i}`, "chip pos"));
+        item.appendChild(el("code", pid, "pid"));
+        const up = el("button", "↑"); up.type = "button"; up.disabled = i === 0; up.title = "Move up";
+        up.onclick = () => { [list[i - 1], list[i]] = [list[i], list[i - 1]]; renderLevels(); };
+        const down = el("button", "↓"); down.type = "button"; down.disabled = i === list.length - 1; down.title = "Move down";
+        down.onclick = () => { [list[i + 1], list[i]] = [list[i], list[i + 1]]; renderLevels(); };
+        const rm = el("button", "Remove"); rm.type = "button";
+        rm.onclick = () => { list.splice(i, 1); renderLevels(); };
+        item.append(up, down, rm);
+        cell.appendChild(item);
+      });
+      if (list.length === 0) cell.appendChild(el("span", "no providers (required)", "bad"));
+      tr.appendChild(cell);
+      const addCell = el("td");
+      const sel = el("select");
+      sel.appendChild(el("option", "add provider…")).value = "";
+      state.implementers.filter((p) => !list.includes(p)).forEach((p) => { sel.appendChild(el("option", p)).value = p; });
+      sel.onchange = () => { if (sel.value) { list.push(sel.value); state.routing[level] = list; renderLevels(); } };
+      addCell.appendChild(sel);
+      tr.appendChild(addCell);
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+    root.appendChild(table);
+  }
+
+  function renderReviewers() {
+    const root = document.getElementById("reviewers");
+    root.textContent = "";
+    if (state.reviewers.length === 0) { root.appendChild(el("p", "No reviewer providers configured.", "muted")); return; }
+    state.reviewers.forEach((r) => {
+      const label = el("label", undefined, "row");
+      const box = el("input"); box.type = "checkbox"; box.checked = r.enabled;
+      box.onchange = () => { r.enabled = box.checked; };
+      label.append(box, el("code", r.provider_id), el("span", r.tier, "chip"));
+      root.appendChild(label);
+    });
+  }
+
+  function apply(data, message) {
+    state = data;
+    renderLevels();
+    renderReviewers();
+    showErrors(data.valid ? [] : data.errors);
+    status(message || `loaded version ${data.version}`, data.valid ? "muted" : "bad");
+  }
+
+  async function reload() {
+    const r = await api("POST", "/api/config/reload");
+    if (r.ok) apply(r.data, `reloaded from disk (version ${r.data.version})`);
+    else status(r.data.detail || `reload failed (${r.status})`, "bad");
+  }
+
+  async function save() {
+    const reviewers_enabled = {};
+    state.reviewers.forEach((r) => { reviewers_enabled[r.provider_id] = r.enabled; });
+    const r = await api("POST", "/api/config", { version: state.version, routing: state.routing, reviewers_enabled });
+    if (r.ok) {
+      const b = r.data.backups.length ? `; backup: ${r.data.backups.join(", ")}` : "; nothing changed";
+      apply(r.data, `saved (version ${r.data.version})${b}`);
+      document.getElementById("status").className = "ok";
+    } else if (r.status === 400) {
+      showErrors(r.data.errors || [r.data.detail]);
+      status("validation failed; nothing written", "bad");
+    } else {
+      showErrors([r.data.detail || `save failed (${r.status})`]);
+      status(r.status === 409 ? "config changed on disk; reload before saving" : "save failed", "bad");
+    }
+  }
+
+  document.getElementById("save").onclick = save;
+  document.getElementById("reload").onclick = reload;
+  api("GET", "/api/config").then((r) => r.ok ? apply(r.data) : status("failed to load config", "bad"));
+</script>
+{% endblock %}

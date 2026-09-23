@@ -10,11 +10,17 @@ requires-python = ">=3.11"
 dependencies = ["PyYAML>=6.0"]
 
 [project.optional-dependencies]
+ui = [
+  "fastapi>=0.110",
+  "jinja2>=3.1",
+  "uvicorn>=0.27",
+]
 dev = [
   "pytest>=8.0",
   "ruff>=0.6",
   "mypy>=1.11",
   "types-PyYAML>=6.0",
+  "httpx>=0.27",
 ]
 
 [project.scripts]
@@ -26,11 +32,15 @@ agent-watchdog = "agent_system.cli:main_watchdog"
 agent-alerts = "agent_system.cli:main_alerts"
 agent-dashboard = "agent_system.cli:main_dashboard"
 agent-promotion-queue = "agent_system.cli:main_queue"
+agent-ui = "agent_system.ui.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["agent_system*"]
 exclude = ["tests*", "runs*", "config*", "projects*", "tasks*"]
+
+[tool.setuptools.package-data]
+"agent_system.ui" = ["templates/*.html"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

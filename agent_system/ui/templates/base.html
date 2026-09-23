@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Model Control{% endblock %} · Multi-Agent Coder</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --border: #dcdcd6;
+    --accent: #2f5fd0; --ok: #1f7a3d; --warn: #9a6400; --bad: #b3261e; --chip: #efefea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --surface: #1e1e1c; --text: #ececE8; --muted: #9d9d97; --border: #34342f;
+      --accent: #7ea2ff; --ok: #5cc27f; --warn: #e0a642; --bad: #f2837b; --chip: #2a2a27;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: baseline; gap: 24px; padding: 14px 24px; border-bottom: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  nav a { color: var(--muted); text-decoration: none; margin-right: 16px; }
+  nav a.active { color: var(--text); font-weight: 600; }
+  main { padding: 20px 24px; max-width: 1200px; }
+  h2 { font-size: 16px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 16px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+  td.num { font-variant-numeric: tabular-nums; }
+  code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 10px; background: var(--chip); font-size: 12px; white-space: nowrap; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); } .muted { color: var(--muted); }
+  button { font: inherit; padding: 4px 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 6px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; cursor: default; }
+  select { font: inherit; padding: 3px 6px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 6px; }
+  .errors { border-color: var(--bad); }
+  .errors li { color: var(--bad); }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  pre { white-space: pre-wrap; word-break: break-word; margin: 6px 0 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  #status { min-height: 1.5em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Multi-Agent Coder · Model Control</h1>
+  <nav>
+    <a href="/providers" class="{{ 'active' if page == 'providers' else '' }}">Providers</a>
+    <a href="/routing" class="{{ 'active' if page == 'routing' else '' }}">Routing</a>
+  </nav>
+</header>
+<main>
+{% block content %}{% endblock %}
+</main>
+<script>
+  // All state-changing calls carry X-Agent-UI; the server rejects POSTs without it.
+  async function api(method, url, body) {
+    const opts = { method, headers: { "X-Agent-UI": "1" } };
+    if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+    const res = await fetch(url, opts);
+    let data = null;
+    try { data = await res.json(); } catch (e) { data = { detail: res.statusText }; }
+    return { ok: res.ok, status: res.status, data };
+  }
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

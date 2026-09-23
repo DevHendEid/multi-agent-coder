@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Providers{% endblock %}
+{% block content %}
+<h2>Providers</h2>
+<p class="lead">From <code>config/models.yaml</code>. Secrets are redacted. Availability is only checked when you click Test.</p>
+
+{% if errors %}
+<div class="panel errors"><strong>Config problems</strong><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+<div class="panel table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Provider</th><th>Model</th><th>Role</th><th>Tier</th><th>Availability</th>
+      <th>Trust</th><th>Benchmark</th><th>Timeout</th><th>Enabled</th><th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for p in providers %}
+    <tr data-provider="{{ p.provider_id }}">
+      <td>
+        <code>{{ p.provider_id }}</code><br><span class="muted">{{ p.name }} · {{ p.type }}</span>
+        <details><summary>config</summary><pre class="mono">{{ p.config | tojson(indent=2) }}</pre></details>
+      </td>
+      <td class="mono">{{ p.model }}</td>
+      <td>{{ p.role }}</td>
+      <td><span class="chip">{{ p.tier }}</span></td>
+      <td class="availability">{% if p.enabled %}<span class="muted">not tested</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td>{{ p.trust_status }}</td>
+      <td class="benchmark">{{ p.benchmark_status }}</td>
+      <td class="num">{{ p.timeout_seconds }}s</td>
+      <td>{% if p.enabled %}<span class="ok">enabled</span>{% else %}<span class="muted">disabled</span>{% endif %}</td>
+      <td>
+        <div class="row">
+          <button type="button" data-action="test" {% if not p.enabled %}disabled{% endif %}>Test</button>
+          <button type="button" data-action="benchmark" {% if not p.enabled %}disabled{% endif %}>Benchmark</button>
+        </div>
+        <details class="bench-log" hidden><summary>benchmark output</summary><pre class="mono"></pre></details>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function setCell(cell, text, cls) {
+    cell.textContent = "";
+    const span = document.createElement("span");
+    span.textContent = text;
+    if (cls) span.className = cls;
+    cell.appendChild(span);
+  }
+
+  async function testProvider(row, btn) {
+    const cell = row.querySelector(".availability");
+    btn.disabled = true;
+    setCell(cell, "checking…", "muted");
+    const r = await api("POST", `/api/providers/${encodeURIComponent(row.dataset.provider)}/availability`);
+    const value = r.ok ? r.data.availability : (r.data.detail || `error ${r.status}`);
+    setCell(cell, value, r.ok && value === "AVAILABLE" ? "ok" : "bad");
+    btn.disabled = false;
+  }
+
+  async function benchmarkProvider(row, btn) {
+    const cell = row.querySelector(".benchmark");
+    const log = row.querySelector(".bench-log");
+    btn.disabled = true;
+    setCell(cell, "running…", "warn");
+    const r = await api("POST", `/api/providers/${encodeURIComponent(row.dataset.provider)}/benchmark`);
+    if (!r.ok) { setCell(cell, r.data.detail || `error ${r.status}`, "bad"); btn.disabled = false; return; }
+    const jobId = r.data.job_id;
+    while (true) {
+      await new Promise((res) => setTimeout(res, 2000));
+      const s = await api("GET", `/api/benchmarks/${jobId}`);
+      if (!s.ok) { setCell(cell, "lost job", "bad"); break; }
+      if (s.data.status !== "running") {
+        setCell(cell, `benchmark ${s.data.status}`, s.data.status === "passed" ? "ok" : "bad");
+        log.hidden = false;
+        log.querySelector("pre").textContent = s.data.output || "(no output)";
+        break;
+      }
+    }
+    btn.disabled = false;
+  }
+
+  document.querySelectorAll("tr[data-provider] button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const row = btn.closest("tr");
+      if (btn.dataset.action === "test") testProvider(row, btn);
+      else benchmarkProvider(row, btn);
+    });
+  });
+</script>
+{% endblock %}
