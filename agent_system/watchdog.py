@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from .governance import (
     ALLOWED_DISPOSITIONS,
     AlertRecord,
@@ -357,37 +359,89 @@ class IntegrationWatchdog:
         return [dict(r) for r in rows]
 
     def _check_worktrees(self) -> list[AlertRecord]:
+        """Inspect registered worktrees of the orchestrator root and every configured project repo."""
         findings: list[AlertRecord] = []
         now_iso = datetime.now(timezone.utc).isoformat()
-        try:
-            wt_proc = subprocess.run(["git", "worktree", "list", "--porcelain"], cwd=str(self.root), capture_output=True, text=True)
-            if wt_proc.returncode != 0:
-                return findings
+        seen: set[str] = set()
 
-            current_wt: str | None = None
-            for line in wt_proc.stdout.splitlines():
-                if line.startswith("worktree "):
-                    current_wt = line.split(" ", 1)[1]
-                elif line == "detached":
-                    if current_wt and current_wt != str(self.root):
-                        findings.append(AlertRecord(
-                            alert_id=f"ALERT-STALE-WT-{Path(current_wt).name}",
-                            finding_code="STALE_EXECUTION_ASSET",
-                            severity="WARNING",
-                            asset_id=None,
-                            task_id=Path(current_wt).name,
-                            title=f"Stale detached worktree {Path(current_wt).name}",
-                            message=f"Detached worktree exists at {current_wt} without active execution.",
-                            evidence=f"worktree_path={current_wt}",
-                            detected_at=now_iso,
-                            current_state="Detached worktree",
-                            required_action="Prune worktree after confirming no uncommitted changes.",
-                            source_paths=[current_wt],
-                        ))
-        except Exception:
-            pass
+        repos: list[tuple[str | None, Path]] = [(None, self.root)]
+        repos.extend(self._configured_project_repos())
+
+        for project_name, repo in repos:
+            entries = self._list_worktrees(repo)
+            if not entries:
+                continue
+            # The first porcelain entry is the repository's main worktree; never flag it.
+            for entry in entries[1:]:
+                wt_path = entry["worktree"]
+                key = str(Path(wt_path).resolve())
+                if key in seen or key in {str(self.root), str(repo)}:
+                    continue
+                if "prunable" in entry:
+                    state = "Orphaned worktree (directory missing)"
+                    message = f"Worktree registered at {wt_path} no longer exists on disk ({entry['prunable'] or 'prunable'})."
+                    action = "Run 'git worktree prune' in the owning repository."
+                elif "detached" in entry:
+                    state = "Detached worktree"
+                    message = f"Detached worktree exists at {wt_path} without active execution."
+                    action = "Prune worktree after confirming no uncommitted changes."
+                else:
+                    continue
+                seen.add(key)
+                name = Path(wt_path).name
+                scope = f"{project_name}-" if project_name else ""
+                findings.append(AlertRecord(
+                    alert_id=f"ALERT-STALE-WT-{scope}{name}",
+                    finding_code="STALE_EXECUTION_ASSET",
+                    severity="WARNING",
+                    asset_id=None,
+                    task_id=name,
+                    title=f"Stale worktree {name}" + (f" in project {project_name}" if project_name else ""),
+                    message=message,
+                    evidence=f"repository={repo}, worktree_path={wt_path}, head={entry.get('HEAD', '')}",
+                    detected_at=now_iso,
+                    current_state=state,
+                    required_action=action,
+                    source_paths=[wt_path],
+                ))
 
         return findings
+
+    def _configured_project_repos(self) -> list[tuple[str, Path]]:
+        """Resolve repository paths from projects/*.yaml, skipping the orchestrator root and missing repos."""
+        repos: list[tuple[str, Path]] = []
+        seen = {self.root}
+        for cfg_path in sorted((self.root / "projects").glob("*.yaml")):
+            try:
+                data = yaml.safe_load(cfg_path.read_text()) or {}
+                name = str(data.get("name") or cfg_path.stem)
+                repo = Path(data["repository"]["path"]).expanduser().resolve()
+            except Exception:
+                continue
+            if repo in seen or not repo.is_dir():
+                continue
+            seen.add(repo)
+            repos.append((name, repo))
+        return repos
+
+    @staticmethod
+    def _list_worktrees(repo: Path) -> list[dict[str, str]]:
+        try:
+            proc = subprocess.run(
+                ["git", "worktree", "list", "--porcelain"], cwd=str(repo), capture_output=True, text=True
+            )
+        except Exception:
+            return []
+        if proc.returncode != 0:
+            return []
+        entries: list[dict[str, str]] = []
+        for line in proc.stdout.splitlines():
+            if line.startswith("worktree "):
+                entries.append({"worktree": line.split(" ", 1)[1]})
+            elif entries and line:
+                key, _, value = line.partition(" ")
+                entries[-1][key] = value
+        return entries
 
     def _sync_promotion_queue(self, now_iso: str) -> None:
         active_queue_asset_ids = set()

@@ -202,6 +202,7 @@ class Doctor:
         missing_receipts = []
         unmerged_completed = []
         unresolved_ready_for_pr = []
+        project_load_failures: dict[tuple[str, str], list[str]] = {}
         for r in rows:
             task_id = r["id"]
             status = r.get("status")
@@ -218,11 +219,12 @@ class Doctor:
                     project_name = r.get("project")
                     if project_name:
                         try:
-                            project = orch._load_project(project_name)
-                            if project.repo_path.is_dir():
-                                repo_dir = project.repo_path
-                        except Exception:
-                            pass
+                            repo_dir = orch._load_project(project_name).repo_path
+                        except Exception as exc:
+                            # Fail closed: never verify a project's merge SHA against the wrong repository.
+                            project_load_failures.setdefault((project_name, str(exc)), []).append(task_id)
+                            unmerged_completed.append(f"{task_id} (project '{project_name}' failed to load)")
+                            continue
                     chk = subprocess.run(
                         ["git", "merge-base", "--is-ancestor", merge_sha, "main"],
                         cwd=str(repo_dir),
@@ -239,6 +241,13 @@ class Doctor:
             out.append(CheckResult("integration:completed_receipts", "FAIL", f"tasks missing integration receipts: {', '.join(missing_receipts)}"))
         else:
             out.append(CheckResult("integration:completed_receipts", "PASS", "all completed production tasks have receipts"))
+
+        for (project_name, reason), task_ids in sorted(project_load_failures.items()):
+            out.append(CheckResult(
+                "integration:project_load",
+                "FAIL",
+                f"project '{project_name}' failed to load ({reason}); skipped project checks for: {', '.join(task_ids)}",
+            ))
 
         if unmerged_completed:
             out.append(CheckResult("integration:completed_merged", "FAIL", f"completed tasks not verified on main: {', '.join(unmerged_completed)}"))

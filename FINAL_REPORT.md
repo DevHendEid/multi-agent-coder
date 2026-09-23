@@ -117,3 +117,36 @@ Scope was limited to the three V1 closeout items. No features were added and no 
 ### Verdict
 
 **V1 CLOSEOUT VERIFIED** — release is tagged `v1.0.0` on the merge commit once GitHub CI passes and the merge SHA is confirmed on `main`.
+
+## Post-V1 hardening — 2026-09-23
+
+Scope was limited to three items. The `v1.0.0` tag is unchanged.
+
+### 1. Watchdog inspects external project worktrees
+
+- `IntegrationWatchdog._check_worktrees` now scans the orchestrator root **and** every repository configured in `projects/*.yaml`. Configs whose repo is missing or invalid are skipped, and a repo listed more than once is scanned once.
+- Both the root and project repos use the same `git worktree list --porcelain` parser. Findings (`STALE_EXECUTION_ASSET`, WARNING):
+  - detached worktrees are reported as "Detached worktree";
+  - registered worktrees whose directory is gone (`prunable`) are reported as "Orphaned worktree (directory missing)".
+- Each repo's main worktree, and the scanned repo path itself, are never flagged.
+- Worktrees are deduplicated by resolved path, so one worktree reachable through several configs produces one finding.
+- Alert IDs are project-scoped (`ALERT-STALE-WT-<project>-<name>`), so same-named worktrees in different repos don't collide. Root alert IDs are unchanged.
+
+### 2. Doctor fails closed on project load errors
+
+- `Doctor._integration_checks` no longer falls back to the orchestrator root when a task's project config fails to load.
+- Instead it emits `integration:project_load` FAIL with the project name, the reason, and the affected task IDs. It skips project-specific merge verification for those tasks, which are also listed as unverified under `integration:completed_merged`.
+
+### 3. Live Ollama reviewer re-validation
+
+- The configured `ollama-reviewer` (`OllamaProvider`, model `qwen2.5-coder:7b` via `OLLAMA_REVIEW_MODEL`, Ollama 0.34.0) was loaded through `ProviderRegistry(config/models.yaml)` and `ProviderReviewer`. No mock or local-command provider was used.
+- One bounded live review of a known diff (add `multiply()` plus a test) returned valid JSON with verdict `PASS` (allowed). The provider took 132.6 s against a 180 s timeout, and the server logged `POST /api/chat` 200.
+- Worktree snapshots (git status, HEAD, and per-file SHA-256) were identical before and after, and `modified_files` was empty.
+- Evidence: `runs/OLLAMA-REVIEWER-LIVE/reviewer-live-result.json`, `runs/OLLAMA-REVIEWER-LIVE/review.json`, probe `runs/ollama_reviewer_live_probe.py`.
+- **REAL OLLAMA REVIEWER = PASS (re-proven live)**
+
+### Verification
+
+- `python -m pytest -q`: **101 passed** (9 new regression tests)
+- compileall: PASS; `shell=True` guard: PASS
+- Clean checkout: `agent-doctor` exit 0, `agent phase-closeout` PASS with a clean tree, `agent-watchdog` 0 active alerts
