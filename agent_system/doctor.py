@@ -281,7 +281,7 @@ class Doctor:
 
         try:
             watchdog = IntegrationWatchdog(self.root)
-            active_alerts = watchdog.run()
+            active_alerts = watchdog.run(persist=False)
             out.append(CheckResult("governance:watchdog", "PASS", f"watchdog scan completed ({len(active_alerts)} active alerts)"))
         except Exception as exc:
             out.append(CheckResult("governance:watchdog", "FAIL", f"watchdog execution failed: {exc}"))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import subprocess
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -14,8 +15,6 @@ from .governance import (
     ProjectHealthMetrics,
     PromotionQueueItem,
 )
-from .state import StateStore
-
 
 class IntegrationWatchdog:
     """Deterministic governance watchdog enforcing continuous lifecycle rules."""
@@ -25,7 +24,8 @@ class IntegrationWatchdog:
         self.registry = GovernanceRegistry(self.root)
         self.state_db_path = self.root / ".agent-system" / "state.db"
 
-    def run(self) -> list[AlertRecord]:
+    def run(self, persist: bool = True) -> list[AlertRecord]:
+        """Scan governance state. With persist=False, registries are only updated in memory."""
         self.registry.load()
         active_findings: list[AlertRecord] = []
 
@@ -70,8 +70,9 @@ class IntegrationWatchdog:
         # 7. Update Project Health Metrics
         self._calculate_health_metrics(now_iso)
 
-        # 8. Persist registries
-        self.registry.save()
+        # 8. Persist registries (explicit watchdog runs only)
+        if persist:
+            self.registry.save()
 
         return [a for a in self.registry.alerts.values() if not a.resolved]
 
@@ -282,10 +283,23 @@ class IntegrationWatchdog:
             return findings
 
         try:
-            state = StateStore(self.state_db_path)
-            tasks = state.list_tasks()
-        except Exception:
-            return findings
+            tasks = self._read_tasks_readonly()
+        except Exception as exc:
+            # Fail closed: an unreadable state DB hides task lifecycle defects.
+            return [AlertRecord(
+                alert_id="ALERT-STATE-DB-UNREADABLE",
+                finding_code="STATE_DB_UNREADABLE",
+                severity="BLOCKING",
+                asset_id=None,
+                task_id=None,
+                title="Runtime state database cannot be read",
+                message=f"Watchdog could not open or read {self.state_db_path}; runtime task invariants cannot be verified.",
+                evidence=f"{type(exc).__name__}: {exc}",
+                detected_at=now_iso,
+                current_state="State DB unreadable",
+                required_action="Restore or repair .agent-system/state.db (or remove it if no tasks exist), then re-run the watchdog.",
+                source_paths=[str(self.state_db_path)],
+            )]
 
         for task in tasks:
             task_id = task["id"]
@@ -331,6 +345,16 @@ class IntegrationWatchdog:
                     ))
 
         return findings
+
+    def _read_tasks_readonly(self) -> list[dict[str, Any]]:
+        # Open read-only so the watchdog never creates or migrates the state DB.
+        con = sqlite3.connect(f"{self.state_db_path.as_uri()}?mode=ro", uri=True, timeout=30.0)
+        try:
+            con.row_factory = sqlite3.Row
+            rows = con.execute("SELECT * FROM tasks ORDER BY created_at DESC").fetchall()
+        finally:
+            con.close()
+        return [dict(r) for r in rows]
 
     def _check_worktrees(self) -> list[AlertRecord]:
         findings: list[AlertRecord] = []
@@ -440,9 +464,9 @@ class IntegrationWatchdog:
             calculated_at=now_iso,
         )
 
-    def check_phase_closeout(self) -> tuple[bool, list[str]]:
+    def check_phase_closeout(self, persist: bool = False) -> tuple[bool, list[str]]:
         """Verify that the repository state satisfies phase closeout invariants."""
-        unresolved = self.run()
+        unresolved = self.run(persist=persist)
         failures: list[str] = []
 
         metrics = self.registry.health_metrics
@@ -456,9 +480,9 @@ class IntegrationWatchdog:
 
         return (len(failures) == 0, failures)
 
-    def generate_dashboard(self) -> str:
+    def generate_dashboard(self, persist: bool = False) -> str:
         """Generate human-readable Markdown integration dashboard from registries."""
-        self.run()
+        self.run(persist=persist)
         lines: list[str] = []
         lines.append("# Multi-Agent Coder — Integration Dashboard")
         lines.append("")

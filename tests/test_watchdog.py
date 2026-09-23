@@ -499,3 +499,121 @@ def test_cmd_watchdog_blocking_exit_code(tmp_path: Path, monkeypatch):
     with pytest.raises(SystemExit) as exc:
         cmd_watchdog(argparse.Namespace())
     assert exc.value.code == 1
+
+
+def _git(root: Path, *args: str) -> str:
+    import subprocess
+    return subprocess.run(
+        ["git", *args], cwd=str(root), check=True, capture_output=True, text=True
+    ).stdout
+
+
+def _init_committed_governance(tmp_path: Path) -> None:
+    init_test_governance(tmp_path)
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init")
+
+
+def test_doctor_and_phase_closeout_leave_git_clean(tmp_path: Path, monkeypatch):
+    _init_committed_governance(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    Doctor(tmp_path)._governance_checks()
+    IntegrationWatchdog(tmp_path).check_phase_closeout()
+    cmd_phase_closeout(argparse.Namespace())
+    IntegrationWatchdog(tmp_path).generate_dashboard()
+
+    assert _git(tmp_path, "status", "--porcelain") == ""
+
+
+def test_read_only_run_still_reports_findings_without_writing(tmp_path: Path, monkeypatch):
+    _init_committed_governance(tmp_path)
+    reg = GovernanceRegistry(tmp_path)
+    reg.load()
+    reg.assets["ASSET-001"].consumer = ""
+    reg.save()
+    _git(tmp_path, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "orphan")
+
+    ok, failures = IntegrationWatchdog(tmp_path).check_phase_closeout()
+    assert ok is False
+    assert any("VALIDATED_ORPHAN" in f for f in failures)
+    checks = {r.name: r.status for r in Doctor(tmp_path)._governance_checks()}
+    assert checks["governance:validated_orphans"] == "FAIL"
+    assert _git(tmp_path, "status", "--porcelain") == ""
+
+
+def test_explicit_watchdog_run_persists(tmp_path: Path, monkeypatch):
+    _init_committed_governance(tmp_path)
+    monkeypatch.chdir(tmp_path)
+
+    cmd_watchdog(argparse.Namespace())
+
+    health = json.loads((tmp_path / "docs" / "project" / "PROJECT_HEALTH.json").read_text())
+    assert health["calculated_at"] != "2026-09-17T00:00:00Z"
+    assert "PROJECT_HEALTH.json" in _git(tmp_path, "status", "--porcelain")
+
+
+@pytest.mark.parametrize("corrupt", ["garbage", "directory", "no_tasks_table"])
+def test_unreadable_state_db_fails_closed(tmp_path: Path, corrupt: str):
+    import sqlite3
+    init_test_governance(tmp_path)
+    db = tmp_path / ".agent-system" / "state.db"
+    db.parent.mkdir(parents=True)
+    if corrupt == "garbage":
+        db.write_bytes(b"this is not a sqlite database" * 10)
+    elif corrupt == "directory":
+        db.mkdir()
+    else:
+        sqlite3.connect(db).close()
+
+    watchdog = IntegrationWatchdog(tmp_path)
+    active = watchdog.run()
+
+    db_alerts = [a for a in active if a.finding_code == "STATE_DB_UNREADABLE"]
+    assert len(db_alerts) == 1
+    assert db_alerts[0].severity == "BLOCKING"
+    assert db_alerts[0].alert_id == "ALERT-STATE-DB-UNREADABLE"
+    assert "could not open or read" in db_alerts[0].message
+    ok, failures = IntegrationWatchdog(tmp_path).check_phase_closeout()
+    assert ok is False
+    assert any("STATE_DB_UNREADABLE" in f for f in failures)
+
+
+def test_unreadable_state_db_alert_not_duplicated(tmp_path: Path, monkeypatch):
+    init_test_governance(tmp_path)
+    db = tmp_path / ".agent-system" / "state.db"
+    db.parent.mkdir(parents=True)
+    db.write_bytes(b"corrupt" * 100)
+    monkeypatch.chdir(tmp_path)
+
+    for _ in range(3):
+        with pytest.raises(SystemExit) as exc:
+            cmd_watchdog(argparse.Namespace())
+        assert exc.value.code == 1
+
+    alerts = json.loads((tmp_path / "docs" / "project" / "ALERTS.json").read_text())
+    db_alerts = [a for a in alerts if a["finding_code"] == "STATE_DB_UNREADABLE"]
+    assert len(db_alerts) == 1
+    assert db_alerts[0]["resolved"] is False
+    # Watchdog must not overwrite or repair the corrupt DB.
+    assert db.read_bytes() == b"corrupt" * 100
+
+    # Once the DB is removed the alert resolves instead of lingering.
+    db.unlink()
+    cmd_watchdog(argparse.Namespace())
+    alerts = json.loads((tmp_path / "docs" / "project" / "ALERTS.json").read_text())
+    assert [a["resolved"] for a in alerts if a["finding_code"] == "STATE_DB_UNREADABLE"] == [True]
+
+
+def test_readable_state_db_is_not_modified(tmp_path: Path):
+    from agent_system.state import StateStore
+    init_test_governance(tmp_path)
+    db = tmp_path / ".agent-system" / "state.db"
+    StateStore(db)
+    before = db.read_bytes()
+
+    active = IntegrationWatchdog(tmp_path).run(persist=False)
+
+    assert not [a for a in active if a.finding_code == "STATE_DB_UNREADABLE"]
+    assert db.read_bytes() == before

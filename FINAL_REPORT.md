@@ -86,3 +86,34 @@ This continuation did not restart the prior audit/E2E run and did not discard `r
 **VALIDATION = PASS**
 
 **BLOCKER = NONE**
+
+## Final V1 release closeout — 2026-09-23
+
+Scope was limited to the three V1 closeout items. No features were added and no completed phases were reopened.
+
+### 1. Watchdog read-only mode
+
+- `IntegrationWatchdog.run(persist=...)` now controls whether governance registries are written. `persist=False` evaluates everything in memory only.
+- `agent-doctor`, `agent phase-closeout`, and `agent dashboard` run the watchdog with `persist=False` and no longer modify tracked files (previously every run rewrote `docs/project/PROJECT_HEALTH.json`).
+- An explicit `agent-watchdog` / `agent watchdog` run still persists `ALERTS.json`, `PROMOTION_QUEUE.json`, and `PROJECT_HEALTH.json`.
+- CI now runs `agent phase-closeout` after `agent-doctor` and fails on `git diff --exit-code`.
+- Regression tests show `git status --porcelain` stays empty after doctor, phase-closeout, and dashboard, that read-only runs still report failures, and that explicit runs persist.
+
+### 2. Watchdog fails closed on state DB errors
+
+- The watchdog reads `.agent-system/state.db` through a SQLite read-only (`mode=ro`) connection. It never creates or migrates the DB.
+- A missing DB still means no runtime tasks (fresh checkout / CI). If the DB exists but cannot be opened or read (corrupt file, directory, missing `tasks` table), the watchdog emits one deterministic `BLOCKING` alert `ALERT-STATE-DB-UNREADABLE` (`STATE_DB_UNREADABLE`) with the exception as evidence. This makes phase-closeout fail and `agent-watchdog` exit 1.
+- Repeated runs update the same alert rather than adding duplicates. The alert resolves once the DB is readable again or removed, and a corrupt DB is left byte-for-byte untouched.
+
+### Verification
+
+- `python -m pytest -q`: **92 passed**
+- `python -m compileall -q agent_system`: PASS
+- `agent-doctor` on a clean checkout: exit 0 (only WARN: state database not created yet)
+- `agent phase-closeout`: PASS; `git diff --exit-code` is clean afterwards
+- `agent-watchdog`: 0 active alerts (BLOCKING=0, HIGH=0, WARNING=0), 0 validated orphans
+- `shell=True` guard: none under `agent_system`, `tests`, or `config`
+
+### Verdict
+
+**V1 CLOSEOUT VERIFIED** — release is tagged `v1.0.0` on the merge commit once GitHub CI passes and the merge SHA is confirmed on `main`.

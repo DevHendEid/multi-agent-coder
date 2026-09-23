@@ -50,6 +50,10 @@ jobs:
           agent-promotion-queue --help >/dev/null
       - name: Doctor config check
         run: agent-doctor
+      - name: Assert doctor and phase-closeout are read-only
+        run: |
+          agent phase-closeout
+          git diff --exit-code
       - name: Watchdog governance check
         run: |
           agent-watchdog
